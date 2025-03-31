@@ -50,8 +50,13 @@ dependencies {
     implementation(libs.googleid)
     implementation(libs.play.services.base)
     implementation(libs.firebase.firestore)
+    implementation(libs.play.services.location)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
     implementation ("com.google.android.gms:play-services-auth:20.7.0") //boton google
+    // Retrofit
+    implementation ("com.squareup.retrofit2:retrofit:2.9.0")
+    // Converter Gson (para parsear JSON)
+    implementation ("com.squareup.retrofit2:converter-gson:2.9.0")
 }

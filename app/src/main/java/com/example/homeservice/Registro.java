@@ -4,14 +4,17 @@ package com.example.homeservice;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.text.TextUtils;
+
 import android.util.Patterns;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.homeservice.model.Usuario;
+import com.example.homeservice.utils.LocationHelper;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -22,46 +25,42 @@ import com.google.firebase.firestore.FirebaseFirestore;
  */
 public class Registro extends AppCompatActivity {
 
-    // Vistas
     private EditText etNombre, etApellidos;
     private EditText etCorreoRegistro, etContrasenaRegistro;
     private Button btnRegistrar;
 
-    // Firebase
     private FirebaseAuth firebaseAuth;
-    private FirebaseFirestore firestore; // Para almacenar datos extra
+    private FirebaseFirestore firestore;
+
+    private LocationHelper locationHelper;
+    private String userIdCreado;
+    private boolean registroCompleto = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_registro);
 
-        // Inicializar Firebase
         firebaseAuth = FirebaseAuth.getInstance();
         firestore = FirebaseFirestore.getInstance();
 
-        // Referenciar vistas
         etNombre = findViewById(R.id.etNombre);
         etApellidos = findViewById(R.id.etApellidos);
         etCorreoRegistro = findViewById(R.id.etCorreoRegistro);
         etContrasenaRegistro = findViewById(R.id.etContrasenaRegistro);
         btnRegistrar = findViewById(R.id.btnRegistrar);
 
-        // Botón “Registrar”
         btnRegistrar.setOnClickListener(v -> registrarUsuario());
+
+        locationHelper = new LocationHelper(this);
     }
 
-    /**
-     * Registra un nuevo usuario con correo y contraseña en Firebase Auth
-     * y almacena sus datos (nombre, apellidos) en Firestore.
-     */
     private void registrarUsuario() {
         String nombre = etNombre.getText().toString().trim();
         String apellidos = etApellidos.getText().toString().trim();
         String correo = etCorreoRegistro.getText().toString().trim();
         String contrasena = etContrasenaRegistro.getText().toString().trim();
 
-        // Validar que no estén vacíos, formato correo, etc.
         if (!Patterns.EMAIL_ADDRESS.matcher(correo).matches()) {
             etCorreoRegistro.setError("Correo inválido");
             etCorreoRegistro.requestFocus();
@@ -73,17 +72,13 @@ public class Registro extends AppCompatActivity {
             return;
         }
 
-        // Verificar si existe
         firebaseAuth.fetchSignInMethodsForEmail(correo)
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         if (task.getResult() != null) {
-                            // Lista de métodos
                             if (!task.getResult().getSignInMethods().isEmpty()) {
-                                // Si NO está vacía, el correo ya está registrado
                                 Toast.makeText(this, "El correo ya está registrado", Toast.LENGTH_SHORT).show();
                             } else {
-                                // Si está vacío -> NO existe -> procedemos a crear
                                 crearUsuario(correo, contrasena, nombre, apellidos);
                             }
                         }
@@ -93,43 +88,90 @@ public class Registro extends AppCompatActivity {
                 });
     }
 
-    /**
-     * Crear el usuario en FirebaseAuth y guardar datos extra
-     */
     private void crearUsuario(String correo, String contrasena, String nombre, String apellidos) {
         firebaseAuth.createUserWithEmailAndPassword(correo, contrasena)
                 .addOnSuccessListener(authResult -> {
                     Toast.makeText(this, "Usuario creado con éxito", Toast.LENGTH_SHORT).show();
                     FirebaseUser user = firebaseAuth.getCurrentUser();
                     if (user != null) {
-                        String userId = user.getUid();
-                        // guardarDatosExtra(userId, nombre, apellidos, correo);
+                        userIdCreado = user.getUid();
                     }
-                    startActivity(new Intent(this, MainActivity.class));
-                    finish();
+                    locationHelper.solicitarPermisoUbicacion();
                 })
                 .addOnFailureListener(e ->
                         Toast.makeText(this, "Error al crear usuario: " + e.getMessage(), Toast.LENGTH_SHORT).show()
                 );
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-    /**
-     * Guarda nombre, apellidos y correo en Firestore usando el userId
+        locationHelper.handleRequestPermissionsResult(
+                requestCode,
+                permissions,
+                grantResults,
+                ciudad -> {
+                    if (userIdCreado != null) {
+                        guardarDatosExtra(
+                                userIdCreado,
+                                etNombre.getText().toString().trim(),
+                                etApellidos.getText().toString().trim(),
+                                etCorreoRegistro.getText().toString().trim(),
+                                ciudad
+                        );
+                    }
+                },
+                e -> {
+                    Toast.makeText(this, "No se obtuvo la localización: " + e.getMessage(), Toast.LENGTH_SHORT).show();
 
-    private void guardarDatosExtra(String userId, String nombre, String apellidos, String correo) {
-        // Estructura de datos
-        Usuario usuario = new Usuario(nombre, apellidos, correo);
+                    if (userIdCreado != null) {
+                        guardarDatosExtra(
+                                userIdCreado,
+                                etNombre.getText().toString().trim(),
+                                etApellidos.getText().toString().trim(),
+                                etCorreoRegistro.getText().toString().trim(),
+                                ""
+                        );
+                    }
+                }
+        );
+    }
 
-        firestore.collection("usuarios")
+    private void guardarDatosExtra(String userId, String nombre, String apellidos, String correo, String ciudad) {
+        String fotoPerfil = "default";
+        String telefono = "No especificado";
+
+        Usuario usuario = new Usuario(
+                userId,
+                nombre,
+                apellidos,
+                correo,
+                ciudad,
+                fotoPerfil
+        );
+
+        FirebaseFirestore.getInstance().collection("usuarios")
                 .document(userId)
                 .set(usuario)
-                .addOnSuccessListener(aVoid ->
-                        Toast.makeText(RegistroActivity.this, "Datos adicionales guardados", Toast.LENGTH_SHORT).show()
-                )
-                .addOnFailureListener(e ->
-                        Toast.makeText(RegistroActivity.this, "Error al guardar datos: " + e.getMessage(), Toast.LENGTH_SHORT).show()
-                );
-    }*/
+                .addOnSuccessListener(aVoid -> {
+                    Toast.makeText(Registro.this, "Datos guardados correctamente", Toast.LENGTH_SHORT).show();
+                    if (!registroCompleto) {
+                        registroCompleto = true;
+                        startActivity(new Intent(this, MainActivity.class));
+                        finish();
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(Registro.this, "Error al guardar datos: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    if (!registroCompleto) {
+                        registroCompleto = true;
+                        startActivity(new Intent(this, MainActivity.class));
+                        finish();
+                    }
+                });
+    }
 }
 

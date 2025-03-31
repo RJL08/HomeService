@@ -2,16 +2,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-
+    <!-- Permisos de ejemplo -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"  />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
-
+    <uses-feature android:name="android.hardware.location.gps" android:required="true" />
 
     <application
         android:allowBackup="true"
@@ -24,24 +24,30 @@
         android:theme="@style/Theme.HomeService"
         tools:targetApi="31">
 
-        <!-- Login será la pantalla inicial -->
+        <!-- LOGIN ACTIVITY: mantiene el LAUNCHER y añade un intent-filter para el Deep Link -->
         <activity
             android:name=".Login"
             android:exported="true"
             android:theme="@style/Theme.HomeService.NoActionBar">
+
+            <!-- Lanzador de la app (MAIN / LAUNCHER) -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
         </activity>
 
-        <!-- MainActivity sigue estando, pero ya no es launcher -->
+        <!-- MAIN ACTIVITY (no es launcher) -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.HomeService.NoActionBar" />
-        <activity android:name=".Registro"
-            android:exported="true" />
-    </application>
 
+        <!-- REGISTRO ACTIVITY -->
+        <activity
+            android:name=".Registro"
+            android:exported="true" />
+
+    </application>
 </manifest>
