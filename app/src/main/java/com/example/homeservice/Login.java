@@ -106,7 +106,7 @@ public class Login extends AppCompatActivity {
             return;
         }
         if (contrasena.length() < 8) {
-            etContrasena.setError("La contraseña debe tener al menos 8 caracteres");
+            etContrasena.setError("La contraseña debe tener entre 8 y 12 caracteres");
             etContrasena.requestFocus();
             return;
         }
