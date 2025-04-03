@@ -27,7 +27,7 @@ public class ValidacionUtils {
     public static boolean validarContrasena(String contrasena) {
         if (contrasena == null) return false;
         int len = contrasena.length();
-        return (len >= 8 && len <= 12);
+        return (len >= 8 && len <= 18);
     }
 
 }

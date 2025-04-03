@@ -51,6 +51,14 @@ public class LocationHelper {
         }
     }
 
+    /**
+     * Maneja el resultado del permiso de ubicación.
+     * @param requestCode Código de solicitud
+     * @param permissions Lista de permisos
+     * @param grantResults Resultados de los permisos
+     * @param onCiudadObtenida Callback para devolver la ciudad
+     * @param onFailure Callback en caso de error
+     */
     public void handleRequestPermissionsResult(int requestCode,
                                                @NonNull String[] permissions,
                                                @NonNull int[] grantResults,

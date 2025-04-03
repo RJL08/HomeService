@@ -1,27 +1,32 @@
 package com.example.homeservice;
 
+import static android.content.pm.PackageManager.PERMISSION_GRANTED;
+
+import android.Manifest;
 import android.content.Intent;
-import android.os.Bundle;
+import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.util.Log;
 import android.util.Patterns;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
+import android.os.Bundle;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-
+import androidx.core.app.ActivityCompat;
 
 import com.example.homeservice.model.Usuario;
 import com.example.homeservice.utils.LocationHelper;
 import com.example.homeservice.utils.ValidacionUtils;
-
-
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
 import com.google.firebase.auth.*;
 import com.google.firebase.firestore.FirebaseFirestore;
 
-import static android.Manifest.permission.ACCESS_FINE_LOCATION;
-import static android.content.pm.PackageManager.PERMISSION_GRANTED;
+import java.util.List;
 
 /**
  * Actividad para registrar nuevos usuarios en Firebase Authentication
@@ -42,6 +47,7 @@ public class Registro extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.d("RegistroDebug", "onCreate: Iniciando Registro activity");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_registro);
 
@@ -54,141 +60,173 @@ public class Registro extends AppCompatActivity {
         etContrasenaRegistro = findViewById(R.id.etContrasenaRegistro);
         btnRegistrar = findViewById(R.id.btnRegistrar);
 
-        btnRegistrar.setOnClickListener(v -> registrarUsuario());
-
+        btnRegistrar.setOnClickListener(v -> {
+            Log.d("RegistroDebug", "btnRegistrar onClick");
+            registrarUsuario();
+        });
         locationHelper = new LocationHelper(this);
+
+        Log.d("RegistroDebug", "onCreate: finalizado");
     }
 
     /**
-     * 1) Validar campos (nombre, apellidos, correo, contrasena).
-     * 2) Comprobar si el correo ya existe en FirebaseAuth.
-     * 3) Si no existe, crear el usuario.
+     * 1) Validar campos
+     * 2) Ver si el correo existe
+     * 3) Si no existe => crearUsuario
      */
     private void registrarUsuario() {
+        Log.d("RegistroDebug", "registrarUsuario: entrando");
+
         String nombre = etNombre.getText().toString().trim();
         String apellidos = etApellidos.getText().toString().trim();
         String correo = etCorreoRegistro.getText().toString().trim();
         String contrasena = etContrasenaRegistro.getText().toString().trim();
 
-        // *** Validación con tus chequeos + ValidationUtils *** //
+        Log.d("RegistroDebug", "Datos recogidos -> Nombre: " + nombre
+                + ", Apellidos: " + apellidos
+                + ", Correo: " + correo
+                + ", Contrasena: " + contrasena);
 
-        // Validación de nombre
+        // Validaciones
         if (nombre.isEmpty() || !ValidacionUtils.validarNombre(nombre)) {
+            Log.d("RegistroDebug", "registrarUsuario: nombre inválido");
             etNombre.setError("Nombre inválido (máx 20 chars)");
             etNombre.requestFocus();
             return;
         }
-
-        // Validación de apellidos (opcional, sólo si te interesa un máximo):
         if (!ValidacionUtils.validarApellidos(apellidos)) {
+            Log.d("RegistroDebug", "registrarUsuario: apellidos muy largos");
             etApellidos.setError("Apellidos muy largos (máx 30 chars)");
             etApellidos.requestFocus();
             return;
         }
-
-        // Tu chequeo de correo con Patterns
         if (!Patterns.EMAIL_ADDRESS.matcher(correo).matches()) {
+            Log.d("RegistroDebug", "registrarUsuario: correo inválido");
             etCorreoRegistro.setError("Correo inválido");
             etCorreoRegistro.requestFocus();
             return;
         }
-        // Contraseña: mínimo 8 (tú) y máximo 12 (ValidationUtils)
         if (!ValidacionUtils.validarContrasena(contrasena)) {
-            etContrasenaRegistro.setError("Contraseña 8-12 chars");
+            Log.d("RegistroDebug", "registrarUsuario: contrasena inválida");
+            etContrasenaRegistro.setError("Contraseña 8-18 chars");
             etContrasenaRegistro.requestFocus();
             return;
         }
 
-        // *** Comprobar si existe en FirebaseAuth ***
+        Log.d("RegistroDebug", "registrarUsuario: pasando a fetchSignInMethodsForEmail para " + correo);
+
         firebaseAuth.fetchSignInMethodsForEmail(correo)
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         if (task.getResult() != null) {
                             if (!task.getResult().getSignInMethods().isEmpty()) {
+                                Log.d("RegistroDebug", "El correo ya está registrado: " + correo);
                                 Toast.makeText(this, "El correo ya está registrado", Toast.LENGTH_SHORT).show();
                             } else {
-                                // Todo OK -> crear usuario
+                                Log.d("RegistroDebug", "El correo NO está registrado -> crearUsuario");
                                 crearUsuario(correo, contrasena, nombre, apellidos);
                             }
+                        } else {
+                            Log.d("RegistroDebug", "fetchSignInMethodsForEmail: getResult() es null");
                         }
                     } else {
+                        Log.e("RegistroDebug", "Error en fetchSignInMethodsForEmail", task.getException());
                         Toast.makeText(this, "Error: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 });
     }
 
     /**
-     * Crear el usuario en FirebaseAuth. Si se crea con éxito:
-     * - Obtenemos su UID
-     * - Revisamos si el permiso de localización YA está concedido
-     *   -> Si está concedido => guardamos datos + ciudad
-     *   -> Si no está => solicitamos el permiso => onRequestPermissionsResult
+     * createUserWithEmailAndPassword => doc con ciudad="", luego ver permisos
      */
     private void crearUsuario(String correo, String contrasena, String nombre, String apellidos) {
+        Log.d("RegistroDebug", "crearUsuario: email=" + correo + ", pass=" + contrasena
+                + ", nombre=" + nombre + ", apellidos=" + apellidos);
+
         firebaseAuth.createUserWithEmailAndPassword(correo, contrasena)
                 .addOnSuccessListener(authResult -> {
+                    Log.d("RegistroDebug", "Usuario creado con éxito en Auth. UID="
+                            + authResult.getUser().getUid());
                     Toast.makeText(this, "Usuario creado con éxito", Toast.LENGTH_SHORT).show();
+
                     FirebaseUser user = firebaseAuth.getCurrentUser();
                     if (user != null) {
                         userIdCreado = user.getUid();
-                    }
+                        Log.d("RegistroDebug", "userIdCreado=" + userIdCreado);
 
-                    // *** Si YA tenemos el permiso, no dependemos de onRequestPermissionsResult ***
-                    if (checkSelfPermission(ACCESS_FINE_LOCATION) == PERMISSION_GRANTED) {
-                        // Obtenemos la localización directo y luego guardamos
-                        obtenerLocalizacionYGuardar(nombre, apellidos, correo);
+                        // Guardar con ciudad = ""
+                        guardarDatosExtra(userIdCreado, nombre, apellidos, correo, "");
+
+                        // Si permiso ya => actualizamos localización
+                        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PERMISSION_GRANTED) {
+                            Log.d("RegistroDebug", "Permiso YA concedido, actualizarLocalizacionSiYaConcedido()");
+                            actualizarLocalizacionSiYaConcedido();
+                        } else {
+                            Log.d("RegistroDebug", "Permiso NO concedido, solicitamos permisoUbicacion()");
+                            locationHelper.solicitarPermisoUbicacion();
+                        }
                     } else {
-                        // Si no está concedido, lo pedimos -> se maneja en onRequestPermissionsResult
-                        locationHelper.solicitarPermisoUbicacion();
+                        Log.w("RegistroDebug", "Usuario es null después de createUser, esto es raro");
                     }
                 })
-                .addOnFailureListener(e ->
-                        Toast.makeText(this, "Error al crear usuario: " + e.getMessage(), Toast.LENGTH_SHORT).show()
-                );
+                .addOnFailureListener(e -> {
+                    Log.e("RegistroDebug", "Fallo al crear usuario: " + e.getMessage());
+                    Toast.makeText(this, "Error al crear usuario: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
     }
 
     /**
-     * Obtiene la localización directamente y guarda en Firestore (sin onRequestPermissionsResult).
-     * Sirve cuando YA está el permiso.
+     * Actualiza la ciudad si el permiso YA estaba concedido
      */
-    private void obtenerLocalizacionYGuardar(String nombre, String apellidos, String correo) {
-        locationHelper.handleRequestPermissionsResult(
-                LocationHelper.REQUEST_CODE_LOCATION,
-                new String[]{ACCESS_FINE_LOCATION},
-                new int[]{PERMISSION_GRANTED}, // simulamos que se concedió
-                ciudad -> {
-                    if (userIdCreado != null) {
-                        guardarDatosExtra(
-                                userIdCreado,
-                                nombre,
-                                apellidos,
-                                correo,
-                                ciudad
-                        );
+    private void actualizarLocalizacionSiYaConcedido() {
+        Log.d("RegistroDebug", "actualizarLocalizacionSiYaConcedido: entrando");
+
+        FusedLocationProviderClient client = LocationServices.getFusedLocationProviderClient(this);
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PERMISSION_GRANTED) {
+            Log.d("RegistroDebug", "actualizarLocalizacionSiYaConcedido: sin permiso, saliendo");
+            return;
+        }
+        client.getLastLocation().addOnSuccessListener(location -> {
+            Log.d("RegistroDebug", "getLastLocation onSuccess");
+            if (location != null) {
+                Log.d("RegistroDebug", "location != null. Lat=" + location.getLatitude() + ", Lng=" + location.getLongitude());
+                String ciudad = "Desconocido";
+                try {
+                    List<Address> direcciones = new Geocoder(this).getFromLocation(location.getLatitude(), location.getLongitude(), 1);
+                    if (direcciones != null && !direcciones.isEmpty()) {
+                        Address address = direcciones.get(0);
+                        String city = address.getLocality();
+                        ciudad = (city != null) ? city : address.getAdminArea();
+                        Log.d("RegistroDebug", "Geocodificado ciudad=" + ciudad);
+                    } else {
+                        Log.d("RegistroDebug", "Direcciones vacías o null");
                     }
-                },
-                e -> {
-                    Toast.makeText(this, "No se obtuvo la localización: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    if (userIdCreado != null) {
-                        guardarDatosExtra(
-                                userIdCreado,
-                                nombre,
-                                apellidos,
-                                correo,
-                                ""
-                        );
-                    }
+                } catch (Exception e) {
+                    Log.e("RegistroDebug", "Excepción en geocodificar ciudad", e);
                 }
-        );
+                if (userIdCreado != null) {
+                    Log.d("RegistroDebug", "Llamar a actualizarSoloCiudad con " + ciudad);
+                    actualizarSoloCiudad(userIdCreado, ciudad);
+                } else {
+                    Log.w("RegistroDebug", "userIdCreado es null en actualizarLocalizacionSiYaConcedido");
+                }
+            } else {
+                Log.d("RegistroDebug", "location == null");
+            }
+        }).addOnFailureListener(e -> {
+            Log.e("Registro", "No se pudo obtener localización con permiso ya concedido: " + e.getMessage());
+        });
     }
 
     /**
-     * onRequestPermissionsResult se llama SOLO si no teníamos el permiso antes.
+     * onRequestPermissionsResult => si se concede => actualizamos
      */
     @Override
     public void onRequestPermissionsResult(int requestCode,
                                            @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
+        Log.d("RegistroDebug", "onRequestPermissionsResult: requestCode=" + requestCode);
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
         locationHelper.handleRequestPermissionsResult(
@@ -196,32 +234,53 @@ public class Registro extends AppCompatActivity {
                 permissions,
                 grantResults,
                 ciudad -> {
+                    Log.d("RegistroDebug", "handleRequestPermissionsResult -> onSuccess. ciudad=" + ciudad);
                     if (userIdCreado != null) {
-                        guardarDatosExtra(
-                                userIdCreado,
-                                etNombre.getText().toString().trim(),
-                                etApellidos.getText().toString().trim(),
-                                etCorreoRegistro.getText().toString().trim(),
-                                ciudad
-                        );
+                        actualizarSoloCiudad(userIdCreado, ciudad);
+                    } else {
+                        Log.w("RegistroDebug", "userIdCreado es null en onRequestPermissionsResult");
                     }
                 },
                 e -> {
+                    Log.e("RegistroDebug", "handleRequestPermissionsResult -> onFailure: " + e.getMessage());
                     Toast.makeText(this, "No se obtuvo la localización: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    if (userIdCreado != null) {
-                        guardarDatosExtra(
-                                userIdCreado,
-                                etNombre.getText().toString().trim(),
-                                etApellidos.getText().toString().trim(),
-                                etCorreoRegistro.getText().toString().trim(),
-                                ""
-                        );
-                    }
                 }
         );
     }
 
+    /**
+     * Actualiza SOLO localizacion
+     */
+    private void actualizarSoloCiudad(String userId, String ciudad) {
+        Log.d("RegistroDebug", "actualizarSoloCiudad -> userId=" + userId + ", ciudad=" + ciudad);
+
+        FirebaseFirestore.getInstance()
+                .collection("usuarios")
+                .document(userId)
+                .update("localizacion", ciudad)
+                .addOnSuccessListener(aVoid -> {
+                    Log.d("RegistroDebug", "Ciudad actualizada con éxito a " + ciudad);
+                    Toast.makeText(Registro.this, "Ciudad actualizada a " + ciudad, Toast.LENGTH_SHORT).show();
+                    // Ir a Main si quieres
+                    startActivity(new Intent(this, MainActivity.class));
+                    finish();
+                })
+                .addOnFailureListener(e -> {
+                    Log.e("RegistroDebug", "Error al actualizar ciudad: " + e.getMessage());
+                    Toast.makeText(Registro.this, "Error al actualizar ciudad: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+    }
+
+    /**
+     * Guardar datos básicos con ciudad vacía
+     */
     private void guardarDatosExtra(String userId, String nombre, String apellidos, String correo, String ciudad) {
+        Log.d("RegistroDebug", "guardarDatosExtra -> userId=" + userId
+                + ", nombre=" + nombre
+                + ", apellidos=" + apellidos
+                + ", correo=" + correo
+                + ", ciudad=" + ciudad);
+
         String fotoPerfil = "default";
 
         Usuario usuario = new Usuario(
@@ -237,19 +296,19 @@ public class Registro extends AppCompatActivity {
                 .document(userId)
                 .set(usuario)
                 .addOnSuccessListener(aVoid -> {
+                    Log.d("RegistroDebug", "Datos guardados correctamente en Firestore.");
                     Toast.makeText(Registro.this, "Datos guardados correctamente", Toast.LENGTH_SHORT).show();
                     if (!registroCompleto) {
                         registroCompleto = true;
-                        // Ir a MainActivity
                         startActivity(new Intent(this, MainActivity.class));
                         finish();
                     }
                 })
                 .addOnFailureListener(e -> {
+                    Log.e("RegistroDebug", "Error al guardar datos: " + e.getMessage());
                     Toast.makeText(Registro.this, "Error al guardar datos: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     if (!registroCompleto) {
                         registroCompleto = true;
-                        // Ir a MainActivity aunque falle
                         startActivity(new Intent(this, MainActivity.class));
                         finish();
                     }
