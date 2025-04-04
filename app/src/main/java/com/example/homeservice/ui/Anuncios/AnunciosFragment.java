@@ -1,31 +1,35 @@
-package com.example.homeservice.ui.home;
+package com.example.homeservice.ui.Anuncios;
 
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.homeservice.databinding.FragmentHomeBinding;
 
-public class HomeFragment extends Fragment {
+public class AnunciosFragment extends Fragment {
 
     private FragmentHomeBinding binding;
+    private RecyclerView recyclerView;
 
+    @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
-        HomeViewModel homeViewModel =
-                new ViewModelProvider(this).get(HomeViewModel.class);
-
         binding = FragmentHomeBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
 
-        final TextView textView = binding.textHome;
-        homeViewModel.getText().observe(getViewLifecycleOwner(), textView::setText);
+        // Configurar RecyclerView con GridLayout de 2 columnas
+        recyclerView = binding.recyclerViewAnuncios;
+        recyclerView.setLayoutManager(new GridLayoutManager(getContext(), 2));
+
+        // Aquí puedes configurar tu adaptador con los datos de los anuncios
+        // recyclerView.setAdapter(new AnuncioAdapter(listaAnuncios));
+
         return root;
     }
 

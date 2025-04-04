@@ -7,7 +7,6 @@ import android.location.Address;
 import android.location.Geocoder;
 import android.os.Bundle;
 import android.util.Log;
-import android.util.Patterns;
 import android.widget.*;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -26,10 +25,7 @@ import com.google.firebase.auth.*;
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
-
 @SuppressWarnings("deprecation")
-
-
 
 
 
@@ -104,9 +100,9 @@ public class Login extends AppCompatActivity {
         String correo = etCorreo.getText().toString().trim();
         String contrasena = etContrasena.getText().toString().trim();
 
-        // Validación usando ValidacionUtils
+        // 1) Validaciones locales con ValidacionUtils
         if (!ValidacionUtils.validarCorreo(correo)) {
-            etCorreo.setError("Correo inválido. Debe ser .com o .es");
+            etCorreo.setError("Correo inválido (debe terminar en .com o .es)");
             etCorreo.requestFocus();
             return;
         }
@@ -117,14 +113,79 @@ public class Login extends AppCompatActivity {
             return;
         }
 
-        Log.d("LoginDebug", "Intentando iniciar sesión con: " + correo);
+        Log.d("LoginDebug", "Iniciando signInWithEmailAndPassword para: " + correo);
 
+        // 2) Iniciamos sesión en Firebase
         firebaseAuth.signInWithEmailAndPassword(correo, contrasena)
                 .addOnSuccessListener(authResult -> {
-                    Log.d("LoginDebug", "Inicio de sesión exitoso para UID: " + authResult.getUser().getUid());
-                    Toast.makeText(this, "Inicio de sesión exitoso", Toast.LENGTH_SHORT).show();
-                    startActivity(new Intent(this, MainActivity.class));
-                    finish();
+                    FirebaseUser user = authResult.getUser();
+                    if (user != null) {
+                        Log.d("LoginDebug", "Inicio de sesión exitoso. UID=" + user.getUid());
+
+                        String userId = user.getUid();
+
+                        // 3) Leer datos desde Firestore
+                        FirestoreHelper firestoreHelper = new FirestoreHelper();
+                        firestoreHelper.leerUsuario(
+                                userId,
+                                usuarioExistente -> {
+                                    if (usuarioExistente != null) {
+                                        // Usuario existe en Firestore -> guardamos en SharedPreferences
+                                        guardarDatosEnPrefs(
+                                                usuarioExistente.getNombre() + " " + usuarioExistente.getApellidos(),
+                                                usuarioExistente.getCorreo(),
+                                                usuarioExistente.getFotoPerfil()
+                                        );
+                                        Log.d("LoginDebug", "Usuario leído de Firestore -> " + usuarioExistente.getNombre());
+
+                                    } else {
+                                        // Usuario no existe en Firestore (raro, pero posible)
+                                        Log.d("LoginDebug", "Usuario no existe en Firestore, creando con valores por defecto.");
+
+                                        Usuario nuevoUsuario = new Usuario(
+                                                userId,
+                                                "NombreDesconocido",
+                                                "ApellidosDesconocidos",
+                                                user.getEmail(),
+                                                "",
+                                                "fotoPerfilDefault"
+                                        );
+                                        firestoreHelper.guardarUsuario(
+                                                userId,
+                                                nuevoUsuario,
+                                                aVoid -> Log.d("Login", "Usuario creado por defecto en Firestore."),
+                                                e -> Log.e("Login", "Error al guardar usuario por defecto: " + e.getMessage())
+                                        );
+
+                                        guardarDatosEnPrefs("NombreDesconocido", user.getEmail(), "fotoPerfilDefault");
+                                    }
+
+                                    // 4) Permisos localización -> actualiza localización
+                                    if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                                            == PackageManager.PERMISSION_GRANTED) {
+                                        Log.d("LoginDebug", "Permiso de localización YA concedido -> obtenerLocalizacionYActualizar()");
+                                        obtenerLocalizacionYActualizar();
+                                    } else {
+                                        Log.d("LoginDebug", "No hay permiso de localización -> solicitarPermisoUbicacion()");
+                                        locationHelper.solicitarPermisoUbicacion();
+                                    }
+
+                                    // 5) Ir a MainActivity
+                                    startActivity(new Intent(this, MainActivity.class));
+                                    finish();
+                                },
+                                error -> {
+                                    Log.e("LoginDebug", "Error al leer usuario: " + error.getMessage());
+                                    // Aunque falle la lectura, podemos ir a Main
+                                    startActivity(new Intent(this, MainActivity.class));
+                                    finish();
+                                }
+                        );
+
+                    } else {
+                        Log.w("LoginDebug", "signInWithEmailAndPassword user es null");
+                        // Maneja el caso raro de user null
+                    }
                 })
                 .addOnFailureListener(e -> {
                     String mensaje = "Error al iniciar sesión";
@@ -134,78 +195,12 @@ public class Login extends AppCompatActivity {
                         mensaje = "Contraseña incorrecta";
                     }
 
-                    Log.e("LoginDebug", "Fallo al iniciar sesión: " + e.getMessage());
+                    Log.e("LoginDebug", "Fallo al iniciar sesión con correo: " + e.getMessage());
                     Toast.makeText(this, mensaje, Toast.LENGTH_LONG).show();
                 });
     }
 
 
-
-    /**
-     * signIn final (correo sí existe)
-     */
-    private void signInConCorreo(String correo, String contrasena) {
-        Log.d("LoginDebug", "signInConCorreo: email=[" + correo + "], pass=[" + contrasena + "]");
-
-        firebaseAuth.signInWithEmailAndPassword(correo, contrasena)
-                .addOnSuccessListener(authResult -> {
-                    Log.d("LoginDebug", "signInWithEmailAndPassword onSuccess. UID=" + authResult.getUser().getUid());
-
-                    Toast.makeText(this, "Inicio de sesión exitoso", Toast.LENGTH_SHORT).show();
-
-                    FirebaseUser user = authResult.getUser();
-                    if (user != null) {
-                        String userId = user.getUid();
-                        Log.d("LoginDebug", "userId=" + userId);
-
-                        // Guardamos en Firestore con ciudad = "" por si no estaba
-                        FirestoreHelper firestoreHelper = new FirestoreHelper();
-                        Usuario usuario = new Usuario(
-                                userId,
-                                "NombreDesconocido",
-                                "ApellidosDesconocidos",
-                                user.getEmail(),
-                                "",
-                                "fotoPerfilDefault"
-                        );
-                        firestoreHelper.guardarUsuario(
-                                userId,
-                                usuario,
-                                aVoid -> {
-                                    Log.d("Login", "Usuario guardado sin ciudad (login con correo).");
-                                },
-                                e -> {
-                                    Log.e("LoginDebug", "Error al guardar usuario en Firestore: " + e.getMessage());
-                                    Toast.makeText(this, "Error al guardar usuario: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                                }
-                        );
-
-                        // Guardar en SharedPreferences
-                        guardarDatosEnPrefs("NombreDesconocido", user.getEmail(), "fotoPerfilDefault");
-                    } else {
-                        Log.w("LoginDebug", "user es null tras signIn con correo");
-                    }
-
-                    // Comprobar permisos => actualiza localización o pide permiso
-                    if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                            == PackageManager.PERMISSION_GRANTED) {
-                        Log.d("LoginDebug", "Permiso FINE_LOCATION YA concedido -> obtenerLocalizacionYActualizar()");
-                        obtenerLocalizacionYActualizar();
-                    } else {
-                        Log.d("LoginDebug", "No hay permiso FINE_LOCATION -> solicitarPermisoUbicacion()");
-                        locationHelper.solicitarPermisoUbicacion();
-                    }
-
-                    // Ir a Main
-                    Log.d("LoginDebug", "Iniciando MainActivity");
-                    startActivity(new Intent(this, MainActivity.class));
-                    finish();
-                })
-                .addOnFailureListener(e -> {
-                    Log.e("LoginDebug", "signInWithEmailAndPassword -> " + e.getMessage());
-                    Toast.makeText(this, "Error signInWithEmailAndPassword: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                });
-    }
 
     /**
      * Login con Google
@@ -246,7 +241,7 @@ public class Login extends AppCompatActivity {
                 .addOnSuccessListener(authResult -> {
                     Log.d("LoginDebug", "signInWithCredential(Google) onSuccess. UID=" + authResult.getUser().getUid());
                     Toast.makeText(this, "Inicio de sesión con Google exitoso", Toast.LENGTH_SHORT).show();
-
+                    // Guardar en Firestore
                     FirebaseUser user = firebaseAuth.getCurrentUser();
                     if (user != null) {
                         String userId = user.getUid();

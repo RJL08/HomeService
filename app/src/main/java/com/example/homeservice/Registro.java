@@ -4,6 +4,7 @@ import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 
 import android.Manifest;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
@@ -112,8 +113,6 @@ public class Registro extends AppCompatActivity {
             etContrasenaRegistro.requestFocus();
             return;
         }
-
-        Log.d("RegistroDebug", "registrarUsuario: pasando a fetchSignInMethodsForEmail para " + correo);
 
         firebaseAuth.fetchSignInMethodsForEmail(correo)
                 .addOnCompleteListener(task -> {
@@ -275,14 +274,8 @@ public class Registro extends AppCompatActivity {
      * Guardar datos básicos con ciudad vacía
      */
     private void guardarDatosExtra(String userId, String nombre, String apellidos, String correo, String ciudad) {
-        Log.d("RegistroDebug", "guardarDatosExtra -> userId=" + userId
-                + ", nombre=" + nombre
-                + ", apellidos=" + apellidos
-                + ", correo=" + correo
-                + ", ciudad=" + ciudad);
 
         String fotoPerfil = "default";
-
         Usuario usuario = new Usuario(
                 userId,
                 nombre,
@@ -296,8 +289,16 @@ public class Registro extends AppCompatActivity {
                 .document(userId)
                 .set(usuario)
                 .addOnSuccessListener(aVoid -> {
-                    Log.d("RegistroDebug", "Datos guardados correctamente en Firestore.");
                     Toast.makeText(Registro.this, "Datos guardados correctamente", Toast.LENGTH_SHORT).show();
+
+                    // (A) Guardar en SharedPreferences para que MainActivity pueda leerlos
+                    guardarDatosEnPrefs(
+                            nombre, // userName
+                            correo,                  // userEmail
+                            fotoPerfil               // userPhoto (ahora "default")
+                    );
+
+                    // (B) Mantienes la lógica de registroCompleto
                     if (!registroCompleto) {
                         registroCompleto = true;
                         startActivity(new Intent(this, MainActivity.class));
@@ -305,8 +306,8 @@ public class Registro extends AppCompatActivity {
                     }
                 })
                 .addOnFailureListener(e -> {
-                    Log.e("RegistroDebug", "Error al guardar datos: " + e.getMessage());
                     Toast.makeText(Registro.this, "Error al guardar datos: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+
                     if (!registroCompleto) {
                         registroCompleto = true;
                         startActivity(new Intent(this, MainActivity.class));
@@ -314,4 +315,14 @@ public class Registro extends AppCompatActivity {
                     }
                 });
     }
+
+
+    private void guardarDatosEnPrefs(String nombre, String correo, String foto) {
+        SharedPreferences.Editor editor = getSharedPreferences("MyAppPrefs", MODE_PRIVATE).edit();
+        editor.putString("userName", nombre);
+        editor.putString("userEmail", correo);
+        editor.putString("userPhoto", foto);
+        editor.apply();
+    }
+
 }
