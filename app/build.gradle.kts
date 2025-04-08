@@ -54,7 +54,11 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
-    implementation ("com.google.android.gms:play-services-auth:20.7.0") //boton google
+    implementation ("com.google.android.gms:play-services-auth:21.0.0") //boton google
     implementation ("de.hdodenhof:circleimageview:3.1.0")
     implementation ("com.squareup.picasso:picasso:2.71828")
+    implementation ("androidx.navigation:navigation-fragment-ktx:2.7.6")
+    implementation ("androidx.navigation:navigation-ui-ktx:2.7.6")
+    implementation ("com.google.android.gms:play-services-location:21.0.1")
+
 }

@@ -13,5 +13,16 @@
     <string name="menu_slideshow">Mis Anuncios</string>
     <string name="titulo_anuncios">Anuncios</string>
 
+    <string-array name="categorias_array">
+        <item>Electricista</item>
+        <item>Fontanería</item>
+        <item>Carpintería</item>
+        <item>Pintor</item>
+        <item>Limpieza del hogar</item>
+        <item>Cuidado de animales</item>
+        <item>Cuidado de personas</item>
+        <item>Jardinería</item>
+        <item>Mecánico</item>
+    </string-array>
 
 </resources>

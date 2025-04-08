@@ -103,30 +103,38 @@ public class FirestoreHelper {
     }
 
     /**
-     * Leer todos los anuncios, o si prefieres,
-     * podrías filtrar por userId, oficio, etc.
-     * @param onComplete callback con la lista de anuncios
-     * @param onFailure callback de error
+     * Leer todos los anuncios de la colección "anuncios" y llamar a  onAnunciosCargados con la lista.
+     * @param listener callback con la lista de anuncios cargados (o null si no hay anuncios)
+     * @param errorListener callback de error (opcional)
      */
-    public void leerAnuncios(OnSuccessListener<List<Anuncio>> onComplete,
-                             OnFailureListener onFailure) {
-        db.collection(COLECCION_ANUNCIOS)
-                .get()
-                .addOnSuccessListener(querySnapshot -> {
-                    List<Anuncio> lista = new ArrayList<>();
-                    for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
-                        Anuncio anuncio = doc.toObject(Anuncio.class);
-                        if (anuncio != null) {
-                            lista.add(anuncio);
-                        }
+    public void leerAnuncios(OnAnunciosCargadosListener listener, OnErrorListener errorListener) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        db.collection("anuncios")
+                .addSnapshotListener((value, error) -> {
+                    if (error != null) {
+                        errorListener.onError(error);  // <- aquí pasa el FirestoreException
+                        return;
                     }
-                    onComplete.onSuccess(lista);
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error al leer anuncios: " + e.getMessage());
-                    onFailure.onFailure(e);
+
+                    List<Anuncio> lista = new ArrayList<>();
+                    for (QueryDocumentSnapshot doc : value) {
+                        Anuncio anuncio = doc.toObject(Anuncio.class);  // <- conversión correcta
+                        lista.add(anuncio);
+                    }
+                    listener.onAnunciosCargados(lista);
                 });
     }
+
+
+    public interface OnAnunciosCargadosListener {
+        void onAnunciosCargados(List<Anuncio> lista);
+    }
+
+    public interface OnErrorListener {
+        void onError(Exception e);
+    }
+
+
 
     /**
      * Leer los anuncios de un usuario concreto

@@ -15,6 +15,7 @@ import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 import androidx.drawerlayout.widget.DrawerLayout;
 import com.example.homeservice.databinding.ActivityMainBinding;
+import com.example.homeservice.ui.Publicar.PublicarAnuncio;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.material.navigation.NavigationView;
@@ -86,33 +87,33 @@ public class MainActivity extends AppCompatActivity {
         NavigationUI.setupActionBarWithNavController(this, navController, mAppBarConfiguration);
         NavigationUI.setupWithNavController(navigationView, navController);
 
-        // *** AÑADIDO: MANEJAR CLIC EN MENÚ (PASO 2) ***
+
+        // *** AÑADIDO: MANEJAR CLIC EN MENÚ PERSONALIZADO ***
         navigationView.setNavigationItemSelectedListener(item -> {
             int id = item.getItemId();
-            if (id == R.id.nav_home) {
-                navController.navigate(R.id.nav_home);
-                drawer.closeDrawers();
-                return true;
-            } else if (id == R.id.nav_slideshow) {
-                navController.navigate(R.id.nav_slideshow);
-                drawer.closeDrawers();
-                return true;
-            } else if (id == R.id.nav_gallery) {
-                navController.navigate(R.id.nav_gallery);
-                drawer.closeDrawers();
-                return true;
-            }
-            // Si tenemos un item nav_logout en el menú:
-            else if (id == R.id.nav_logout) {
-                // Llamar a realizarLogout()
-                realizarLogout();
-                // Cierra el Drawer
+
+            if (id == R.id.nav_publicar) {
+                // Abrir actividad para publicar anuncio
+                startActivity(new Intent(this, PublicarAnuncio.class));
                 drawer.closeDrawers();
                 return true;
             }
 
-            return false;
+            if (id == R.id.nav_logout) {
+                // Cerrar sesión
+                realizarLogout();
+                drawer.closeDrawers();
+                return true;
+            }
+
+            // Delega el resto de navegación al NavController
+            boolean handled = NavigationUI.onNavDestinationSelected(item, navController);
+            if (handled) {
+                drawer.closeDrawers();
+            }
+            return handled;
         });
+
     }
 
     @Override

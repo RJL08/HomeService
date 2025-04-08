@@ -23,7 +23,7 @@
         android:id="@+id/dropdownCategoria"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:hint="Selecciona una categoría"
+        android:hint="Categoría"
         android:inputType="none"
         android:drawableEnd="@drawable/ic_keyboard_arrow_down"
         app:layout_constraintTop_toBottomOf="@id/etTitulo"
