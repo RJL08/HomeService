@@ -1,10 +1,14 @@
 package com.example.homeservice.model;
 
 
-    /**
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
      * Representa los datos de un anuncio en la base de datos (Firestore).
      */
-    public class Anuncio {
+    public class Anuncio implements Serializable {
 
         private String titulo;          // Título del anuncio
         private String descripcion;     // Descripción detallada
@@ -12,8 +16,10 @@ package com.example.homeservice.model;
         private String localizacion;    // Nombre de la ciudad o ubicación textual
         private String userId;          // ID del usuario que publicó el anuncio
         private long fechaPublicacion;  // Timestamp de cuándo se creó el anuncio
+        private ArrayList<String> listaImagenes = new ArrayList<>();
 
-        /**
+
+    /**
          * Constructor vacío para Firestore (des-serialización).
          */
         public Anuncio() {
@@ -30,9 +36,19 @@ package com.example.homeservice.model;
             this.localizacion = localizacion;
             this.userId = userId;
             this.fechaPublicacion = fechaPublicacion;
+            this.listaImagenes = listaImagenes;
         }
 
         // Getters y setters
+
+    public ArrayList<String> getListaImagenes() {
+        return listaImagenes;
+    }
+
+
+    public void setListaImagenes(List<String> listaImagenes) {
+        this.listaImagenes = (ArrayList<String>) listaImagenes;
+    }
 
         public String getTitulo() {
             return titulo;

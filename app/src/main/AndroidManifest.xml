@@ -41,6 +41,8 @@
 
         </activity>
 
+        <activity android:name=".ui.Anuncios.DetalleAnuncioActivity" />
+
         <activity android:name=".ui.Publicar.PublicarAnuncio" />
         <!-- MAIN ACTIVITY (no es launcher) -->
         <activity

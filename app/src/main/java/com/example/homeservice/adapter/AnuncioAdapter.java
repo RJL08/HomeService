@@ -19,12 +19,14 @@ import java.util.List;
 public class AnuncioAdapter extends RecyclerView.Adapter<AnuncioAdapter.AnuncioViewHolder> {
 
     private List<Anuncio> listaAnuncios;
+    private OnAnuncioClickListener listener;
 
     /**
      * Constructor que recibe la lista de anuncios.
      */
-    public AnuncioAdapter(List<Anuncio> listaAnuncios) {
+    public AnuncioAdapter(List<Anuncio> listaAnuncios, OnAnuncioClickListener listener) {
         this.listaAnuncios = listaAnuncios;
+        this.listener = listener;
     }
 
     /**
@@ -48,6 +50,13 @@ public class AnuncioAdapter extends RecyclerView.Adapter<AnuncioAdapter.AnuncioV
         holder.tvOficio.setText(anuncio.getOficio());
         holder.tvCiudad.setText(anuncio.getLocalizacion());
         holder.tvDescripcion.setText(anuncio.getDescripcion());
+
+        // Evento de clic
+        holder.itemView.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onAnuncioClick(anuncio);
+            }
+        });
     }
 
     /**

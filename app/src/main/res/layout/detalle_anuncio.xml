@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Toolbar -->
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="?attr/colorPrimary"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+        app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
+
+    <!-- Contenido principal -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:layout_marginTop="?attr/actionBarSize">
+
+        <!-- Carrusel de imágenes -->
+        <androidx.viewpager2.widget.ViewPager2
+            android:id="@+id/viewPagerImagenes"
+            android:layout_width="match_parent"
+            android:layout_height="300dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Título del anuncio -->
+        <TextView
+            android:id="@+id/tvTituloDetalle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Título del anuncio"
+            android:textStyle="bold"
+            android:textSize="24sp"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Oficio -->
+        <TextView
+            android:id="@+id/tvOficioDetalle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:hint="Oficio"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <!-- Ciudad -->
+        <TextView
+            android:id="@+id/tvCiudadDetalle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:hint="Ciudad"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Descripción -->
+        <TextView
+            android:id="@+id/tvDescripcionDetalle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Descripción completa del anuncio"
+            android:textSize="16sp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Botón de acción -->
+        <Button
+            android:id="@+id/btnAccion"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="CONTACTAR"
+            android:backgroundTint="@color/purple_500"
+            android:textColor="@android:color/white"
+            android:textStyle="bold" />
+    </LinearLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
