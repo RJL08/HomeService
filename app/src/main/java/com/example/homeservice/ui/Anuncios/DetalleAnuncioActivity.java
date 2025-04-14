@@ -1,11 +1,14 @@
 package com.example.homeservice.ui.Anuncios;
 
 import android.os.Bundle;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.viewpager2.widget.ViewPager2;
+
+import com.bumptech.glide.Glide;
 import com.example.homeservice.R;
 
 
@@ -18,6 +21,8 @@ public class DetalleAnuncioActivity extends AppCompatActivity {
 
     private ViewPager2 viewPager;
     private TextView tvTitulo, tvDescripcion, tvCiudad, tvCategoria;
+    private ImageView ivMapa;
+
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -30,6 +35,7 @@ public class DetalleAnuncioActivity extends AppCompatActivity {
         tvDescripcion = findViewById(R.id.tvDescripcionDetalle);
         tvCiudad = findViewById(R.id.tvCiudadDetalle);
         tvCategoria = findViewById(R.id.tvOficioDetalle);
+        ivMapa = findViewById(R.id.ivMapa);
 
 
         // Recuperamos el anuncio enviado por Intent
@@ -40,6 +46,19 @@ public class DetalleAnuncioActivity extends AppCompatActivity {
             tvDescripcion.setText(anuncio.getDescripcion());
             tvCiudad.setText(anuncio.getLocalizacion());
             tvCategoria.setText(anuncio.getOficio());
+            // Cargamos el mapa con la ubicación del anuncio usando LocationIQ
+            String apiKey = getString(R.string.locationiq_api_key); // Asegúrate de tener esto en strings.xml
+            // Construimos la URL del mapa con la API de LocationIQ y los datos del anuncio (latitud, longitud)
+            String urlMapa = "https://maps.locationiq.com/v3/staticmap"
+                    + "?key=" + apiKey
+                    + "&center=" + anuncio.getLatitud() + "," + anuncio.getLongitud()
+                    + "&zoom=15"
+                    + "&size=600x300"
+                    + "&format=png"
+                    + "&markers=icon:large-red-cutout|" + anuncio.getLatitud() + "," + anuncio.getLongitud();
+
+            Glide.with(this).load(urlMapa).into(ivMapa);
+
 
             // Adaptador para las imágenes (debes pasar una lista de URLs)
             ArrayList<String> urls = (ArrayList<String>) anuncio.getListaImagenes(); // Asegúrate de tener este método

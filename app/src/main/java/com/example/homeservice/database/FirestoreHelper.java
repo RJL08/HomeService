@@ -81,26 +81,30 @@ public class FirestoreHelper {
                 });
     }
 
+
+
     /**
      * Crear un anuncio en la colección "anuncios" (ID auto-generado).
      * @param anuncio Objeto Anuncio
      * @param onSuccess callback con el ID del documento creado
      * @param onFailure callback de error
      */
-    public void crearAnuncio(Anuncio anuncio,
-                             OnSuccessListener<String> onSuccess,
-                             OnFailureListener onFailure) {
-        db.collection(COLECCION_ANUNCIOS)
+    public void crearAnuncio(
+            Anuncio anuncio,
+            OnSuccessListener<String> onSuccess,     // de com.google.android.gms.tasks
+            OnFailureListener onFailure             // de com.google.android.gms.tasks
+    ) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        db.collection("anuncios")
                 .add(anuncio)
                 .addOnSuccessListener(documentReference -> {
-                    Log.d(TAG, "Anuncio creado con ID: " + documentReference.getId());
+                    // La parte de “éxito” regresa un DocumentReference
+                    // Convertimos eso a String => docRef.getId()
                     onSuccess.onSuccess(documentReference.getId());
                 })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error al crear anuncio: " + e.getMessage());
-                    onFailure.onFailure(e);
-                });
+                .addOnFailureListener(onFailure);
     }
+
 
     /**
      * Leer todos los anuncios de la colección "anuncios" y llamar a  onAnunciosCargados con la lista.

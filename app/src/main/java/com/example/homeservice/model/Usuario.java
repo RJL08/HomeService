@@ -1,34 +1,42 @@
 package com.example.homeservice.model;
 
+
+
 /**
- * Modelo de datos para representar a un usuario en la aplicación.
+ * Representa los datos de un usuario en la base de datos de Firestore.
  */
 public class Usuario {
 
-    private String id;               // ID único del usuario (UID de Firebase)
-    private String nombre;          // Nombre del usuario
-    private String apellidos;       // Apellidos del usuario
-    private String correo;          // Correo electrónico
-    private String localizacion;    // Ciudad o ubicación del usuario
-    private String fotoPerfil;      // URL o ruta de la imagen de perfil
+    private String id;             // UID proporcionado por Firebase
+    private String nombre;         // Nombre del usuario
+    private String apellidos;      // Apellidos del usuario
+    private String correo;         // Correo electrónico
+    private String localizacion;   // Ciudad o ubicación textual
+    private String fotoPerfil;     // URL o ruta de la imagen de perfil
+
+    // Campos para coordenadas
+    private Double lat;            // Latitud
+    private Double lon;            // Longitud
 
     /**
-     * Constructor vacío requerido por Firestore.
+     * Constructor vacío requerido por Firestore (des-serialización).
      */
     public Usuario() {
     }
 
     /**
-     * Constructor completo para crear un objeto Usuario.
+     * Constructor principal para crear un Usuario sin lat/lon específicos.
      *
-     * @param id           UID proporcionado por Firebase Authentication.
-     * @param nombre       Nombre del usuario.
-     * @param apellidos    Apellidos del usuario.
-     * @param correo       Correo electrónico del usuario.
-     * @param localizacion Ciudad o ubicación del usuario.
-     * @param fotoPerfil   Ruta o URL de la imagen de perfil.
+     * @param id            UID de Firebase
+     * @param nombre        Nombre
+     * @param apellidos     Apellidos
+     * @param correo        Correo
+     * @param localizacion  Nombre de la ciudad o ubicación textual
+     * @param fotoPerfil    URL de la foto de perfil
      */
-    public Usuario(String id, String nombre, String apellidos, String correo, String localizacion, String fotoPerfil) {
+    public Usuario(String id, String nombre, String apellidos,
+                   String correo, String localizacion,
+                   String fotoPerfil) {
         this.id = id;
         this.nombre = nombre;
         this.apellidos = apellidos;
@@ -37,7 +45,7 @@ public class Usuario {
         this.fotoPerfil = fotoPerfil;
     }
 
-    // Métodos getter y setter
+    // Getters y setters de todos los campos:
 
     public String getId() {
         return id;
@@ -85,5 +93,21 @@ public class Usuario {
 
     public void setFotoPerfil(String fotoPerfil) {
         this.fotoPerfil = fotoPerfil;
+    }
+
+    public Double getLat() {
+        return lat;
+    }
+
+    public void setLat(Double lat) {
+        this.lat = lat;
+    }
+
+    public Double getLon() {
+        return lon;
+    }
+
+    public void setLon(Double lon) {
+        this.lon = lon;
     }
 }

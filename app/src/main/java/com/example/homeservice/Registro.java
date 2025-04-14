@@ -21,6 +21,7 @@ import androidx.core.app.ActivityCompat;
 
 import com.example.homeservice.model.Usuario;
 import com.example.homeservice.utils.LocationHelper;
+import com.example.homeservice.utils.LocationIQHelper;
 import com.example.homeservice.utils.ValidacionUtils;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
@@ -178,45 +179,56 @@ public class Registro extends AppCompatActivity {
      * Actualiza la ciudad si el permiso YA estaba concedido
      */
     private void actualizarLocalizacionSiYaConcedido() {
-        Log.d("RegistroDebug", "actualizarLocalizacionSiYaConcedido: entrando");
-
-        FusedLocationProviderClient client = LocationServices.getFusedLocationProviderClient(this);
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PERMISSION_GRANTED) {
-            Log.d("RegistroDebug", "actualizarLocalizacionSiYaConcedido: sin permiso, saliendo");
             return;
         }
+
+        FusedLocationProviderClient client = LocationServices.getFusedLocationProviderClient(this);
+
         client.getLastLocation().addOnSuccessListener(location -> {
-            Log.d("RegistroDebug", "getLastLocation onSuccess");
             if (location != null) {
-                Log.d("RegistroDebug", "location != null. Lat=" + location.getLatitude() + ", Lng=" + location.getLongitude());
-                String ciudad = "Desconocido";
-                try {
-                    List<Address> direcciones = new Geocoder(this).getFromLocation(location.getLatitude(), location.getLongitude(), 1);
-                    if (direcciones != null && !direcciones.isEmpty()) {
-                        Address address = direcciones.get(0);
-                        String city = address.getLocality();
-                        ciudad = (city != null) ? city : address.getAdminArea();
-                        Log.d("RegistroDebug", "Geocodificado ciudad=" + ciudad);
-                    } else {
-                        Log.d("RegistroDebug", "Direcciones vacías o null");
-                    }
-                } catch (Exception e) {
-                    Log.e("RegistroDebug", "Excepción en geocodificar ciudad", e);
-                }
-                if (userIdCreado != null) {
-                    Log.d("RegistroDebug", "Llamar a actualizarSoloCiudad con " + ciudad);
-                    actualizarSoloCiudad(userIdCreado, ciudad);
-                } else {
-                    Log.w("RegistroDebug", "userIdCreado es null en actualizarLocalizacionSiYaConcedido");
-                }
+                double lat = location.getLatitude();
+                double lon = location.getLongitude();
+
+                // Llamar a LocationIQ
+                LocationIQHelper.reverseGeocode(lat, lon,
+                        cityName -> {
+                            // cityName es la ciudad devuelta por LocationIQ
+                            Log.d("RegistroDebug", "LocationIQ => " + cityName);
+
+                            // 1) Guardar la ciudad en Firestore
+                            actualizarSoloCiudad(userIdCreado, cityName);
+
+                            // 2) Opcional: guardar lat/lon
+                            firestore.collection("usuarios")
+                                    .document(userIdCreado)
+                                    .update("lat", lat, "lon", lon)
+                                    .addOnSuccessListener(aVoid -> {
+                                        Log.d("RegistroDebug", "Lat/Lon guardados en Firestore");
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        Log.e("RegistroDebug", "Error guardando lat/lon: " + e.getMessage());
+                                    });
+                        },
+                        error -> {
+                            // Hubo algún fallo en LocationIQ
+                            Log.e("RegistroDebug", "Error locationIQ => " + error.getMessage());
+                            // Ponemos ciudad desconocida
+                            actualizarSoloCiudad(userIdCreado, "Desconocido");
+                        }
+                );
+
             } else {
-                Log.d("RegistroDebug", "location == null");
+                // location == null => no se pudo obtener
+                Log.d("RegistroDebug", "location == null => no se pudo obtener lat/lon");
             }
         }).addOnFailureListener(e -> {
-            Log.e("Registro", "No se pudo obtener localización con permiso ya concedido: " + e.getMessage());
+            Log.e("RegistroDebug", "getLastLocation => onFailure: " + e.getMessage());
         });
     }
+
+
 
     /**
      * onRequestPermissionsResult => si se concede => actualizamos
@@ -225,27 +237,43 @@ public class Registro extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode,
                                            @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
-        Log.d("RegistroDebug", "onRequestPermissionsResult: requestCode=" + requestCode);
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
         locationHelper.handleRequestPermissionsResult(
                 requestCode,
                 permissions,
                 grantResults,
-                ciudad -> {
-                    Log.d("RegistroDebug", "handleRequestPermissionsResult -> onSuccess. ciudad=" + ciudad);
-                    if (userIdCreado != null) {
-                        actualizarSoloCiudad(userIdCreado, ciudad);
-                    } else {
-                        Log.w("RegistroDebug", "userIdCreado es null en onRequestPermissionsResult");
-                    }
+                (lat, lon) -> {
+                    // Éxito => LocationHelper nos dio lat y lon
+                    LocationIQHelper.reverseGeocode(lat, lon,
+                            cityName -> {
+                                // cityName es tu ciudad devuelta por LocationIQ
+                                Log.d("RegistroDebug", "CityName => " + cityName);
+                                if (userIdCreado != null) {
+                                    actualizarSoloCiudad(userIdCreado, cityName);
+                                    FirebaseFirestore.getInstance()
+                                            .collection("usuarios")
+                                            .document(userIdCreado)
+                                            .update("lat", lat, "lon", lon);
+                                }
+                            },
+                            ex -> {
+                                // ex es Exception => ex.getMessage()
+                                Log.e("RegistroDebug", "Error al hacer reverse geocode: " + ex.getMessage());
+                                if (userIdCreado != null) {
+                                    actualizarSoloCiudad(userIdCreado, "Desconocido");
+                                }
+                            }
+                    );
                 },
-                e -> {
-                    Log.e("RegistroDebug", "handleRequestPermissionsResult -> onFailure: " + e.getMessage());
-                    Toast.makeText(this, "No se obtuvo la localización: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                ex -> {
+                    // ex es Exception => ex.getMessage() OK
+                    Log.e("RegistroDebug", "handleRequestPermissionsResult -> onFailure: " + ex.getMessage());
+                    Toast.makeText(this, "No se obtuvo la localización: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
                 }
         );
     }
+
 
     /**
      * Actualiza SOLO localizacion

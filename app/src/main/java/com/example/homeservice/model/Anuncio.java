@@ -8,95 +8,113 @@ import java.util.List;
 /**
      * Representa los datos de un anuncio en la base de datos (Firestore).
      */
-    public class Anuncio implements Serializable {
 
-        private String titulo;          // Título del anuncio
-        private String descripcion;     // Descripción detallada
-        private String oficio;          // Tipo de servicio: "Pintor", "Electricista", etc.
-        private String localizacion;    // Nombre de la ciudad o ubicación textual
-        private String userId;          // ID del usuario que publicó el anuncio
-        private long fechaPublicacion;  // Timestamp de cuándo se creó el anuncio
-        private ArrayList<String> listaImagenes = new ArrayList<>();
+public class Anuncio implements Serializable {
 
+    private String titulo;          // Título del anuncio
+    private String descripcion;     // Descripción detallada
+    private String oficio;          // Tipo de servicio: "Pintor", "Electricista", etc.
+    private String localizacion;    // Nombre de la ciudad o ubicación textual
+    private String userId;          // ID del usuario que publicó el anuncio
+    private long fechaPublicacion;  // Timestamp de cuándo se creó el anuncio
+    private double latitud;         // Latitud para la ubicación exacta
+    private double longitud;        // Longitud para la ubicación exacta
+    private ArrayList<String> listaImagenes = new ArrayList<>();
 
     /**
-         * Constructor vacío para Firestore (des-serialización).
-         */
-        public Anuncio() {
-        }
+     * Constructor vacío para Firestore (des-serialización).
+     */
+    public Anuncio() {
+    }
 
-        /**
-         * Constructor principal para inicializar todos los campos.
-         */
-        public Anuncio(String titulo, String descripcion, String oficio,
-                       String localizacion, String userId, long fechaPublicacion) {
-            this.titulo = titulo;
-            this.descripcion = descripcion;
-            this.oficio = oficio;
-            this.localizacion = localizacion;
-            this.userId = userId;
-            this.fechaPublicacion = fechaPublicacion;
-            this.listaImagenes = listaImagenes;
-        }
+    /**
+     * Constructor principal para inicializar todos los campos.
+     */
 
-        // Getters y setters
+    public Anuncio(String titulo, String descripcion, String oficio,
+                   String ciudad, String uid, long fechaPublicacion) {
+        this.titulo = titulo;
+        this.descripcion = descripcion;
+        this.oficio = oficio;
+        this.localizacion = ciudad;
+        this.userId = uid;
+        this.fechaPublicacion = fechaPublicacion;
+        this.latitud = latitud;  // Si no las estás usando todavía
+        this.longitud = longitud;
+        this.listaImagenes = new ArrayList<>();
+    }
+
+    // Getters y setters
 
     public ArrayList<String> getListaImagenes() {
         return listaImagenes;
     }
 
-
     public void setListaImagenes(List<String> listaImagenes) {
         this.listaImagenes = (ArrayList<String>) listaImagenes;
     }
 
-        public String getTitulo() {
-            return titulo;
-        }
-
-        public void setTitulo(String titulo) {
-            this.titulo = titulo;
-        }
-
-        public String getDescripcion() {
-            return descripcion;
-        }
-
-        public void setDescripcion(String descripcion) {
-            this.descripcion = descripcion;
-        }
-
-        public String getOficio() {
-            return oficio;
-        }
-
-        public void setOficio(String oficio) {
-            this.oficio = oficio;
-        }
-
-        public String getLocalizacion() {
-            return localizacion;
-        }
-
-        public void setLocalizacion(String localizacion) {
-            this.localizacion = localizacion;
-        }
-
-        public String getUserId() {
-            return userId;
-        }
-
-        public void setUserId(String userId) {
-            this.userId = userId;
-        }
-
-        public long getFechaPublicacion() {
-            return fechaPublicacion;
-        }
-
-        public void setFechaPublicacion(long fechaPublicacion) {
-            this.fechaPublicacion = fechaPublicacion;
-        }
+    public String getTitulo() {
+        return titulo;
     }
 
+    public void setTitulo(String titulo) {
+        this.titulo = titulo;
+    }
 
+    public String getDescripcion() {
+        return descripcion;
+    }
+
+    public void setDescripcion(String descripcion) {
+        this.descripcion = descripcion;
+    }
+
+    public String getOficio() {
+        return oficio;
+    }
+
+    public void setOficio(String oficio) {
+        this.oficio = oficio;
+    }
+
+    public String getLocalizacion() {
+        return localizacion;
+    }
+
+    public void setLocalizacion(String localizacion) {
+        this.localizacion = localizacion;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public long getFechaPublicacion() {
+        return fechaPublicacion;
+    }
+
+    public void setFechaPublicacion(long fechaPublicacion) {
+        this.fechaPublicacion = fechaPublicacion;
+    }
+
+    public double getLatitud() {
+        return latitud;
+    }
+
+    public void setLatitud(double latitud) {
+        this.latitud = latitud;
+    }
+
+    public double getLongitud() {
+        return longitud;
+    }
+
+    public void setLongitud(double longitud) {
+        this.longitud = longitud;
+    }
+}

@@ -15,6 +15,7 @@ import android.Manifest;
 import com.example.homeservice.database.FirestoreHelper;
 import com.example.homeservice.model.Usuario;
 import com.example.homeservice.utils.LocationHelper;
+import com.example.homeservice.utils.LocationIQHelper;
 import com.example.homeservice.utils.ValidacionUtils;
 import com.google.android.gms.auth.api.signin.*;
 import com.google.android.gms.common.SignInButton;
@@ -355,53 +356,70 @@ public class Login extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode,
                                            @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
-        Log.d("LoginDebug", "onRequestPermissionsResult: requestCode=" + requestCode);
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
+        // Suponiendo que handleRequestPermissionsResult(...) recibe (lat, lon) en onSuccess
         locationHelper.handleRequestPermissionsResult(
                 requestCode,
                 permissions,
                 grantResults,
-                ciudad -> {
-                    Log.d("LoginDebug", "Permiso concedido, ciudad=" + ciudad);
-                    // Ciudad obtenida => actualizamos Firestore
-                    FirebaseUser user = firebaseAuth.getCurrentUser();
-                    if (user != null) {
-                        String userId = user.getUid();
-                        FirestoreHelper firestoreHelper = new FirestoreHelper();
-                        firestoreHelper.leerUsuario(
-                                userId,
-                                usuarioLeido -> {
-                                    if (usuarioLeido != null) {
-                                        usuarioLeido.setLocalizacion(ciudad);
-                                        firestoreHelper.guardarUsuario(
+                (lat, lon) -> {
+                    // lat, lon son Double
+                    if (lat != null && lon != null) {
+                        LocationIQHelper.reverseGeocode(
+                                lat, lon,
+                                ciudad -> {  // ← en vez de cityName
+                                    Log.d("LoginDebug", "ReverseGeocode => ciudad=" + ciudad);
+                                    FirebaseUser user = firebaseAuth.getCurrentUser();
+                                    if (user != null) {
+                                        String userId = user.getUid();
+                                        FirestoreHelper firestoreHelper = new FirestoreHelper();
+
+                                        // Leer usuario
+                                        firestoreHelper.leerUsuario(
                                                 userId,
-                                                usuarioLeido,
-                                                aVoid -> {
-                                                    Log.d("Login", "Localización updated: " + ciudad);
-                                                    startActivity(new Intent(this, MainActivity.class));
-                                                    finish();
+                                                usuarioLeido -> {
+                                                    if (usuarioLeido != null) {
+                                                        // setLocalizacion con 'ciudad'
+                                                        usuarioLeido.setLocalizacion(ciudad);
+
+                                                        // O si quieres lat/lon, asumiendo que has añadido esos campos
+                                                        // usuarioLeido.setLat(lat);
+                                                        // usuarioLeido.setLon(lon);
+
+                                                        firestoreHelper.guardarUsuario(
+                                                                userId,
+                                                                usuarioLeido,
+                                                                aVoid -> {
+                                                                    Log.d("LoginDebug", "Localización actualizada: " + ciudad);
+                                                                    startActivity(new Intent(Login.this, MainActivity.class));
+                                                                    finish();
+                                                                },
+                                                                error -> Log.e("Login", "Error guardando localización => " + error.getMessage())
+                                                        );
+                                                    }
                                                 },
-                                                error -> Log.e("Login", "Error al guardar localización: " + error.getMessage())
+                                                err -> Log.e("Login", "Error leyendo usuario => " + err.getMessage())
                                         );
-                                    } else {
-                                        Log.w("LoginDebug", "leerUsuario devolvió null en onRequestPermissionsResult");
                                     }
                                 },
-                                error -> Log.e("Login", "Error al leer user: " + error.getMessage())
+                                ex -> {
+                                    Log.e("LoginDebug", "Error LocationIQ => " + ex.getMessage());
+                                    // Si LocationIQ falla => Localizacion = "Desconocido" o no actualizamos
+                                }
                         );
                     } else {
-                        Log.w("LoginDebug", "user es null en onRequestPermissionsResult");
+                        Log.d("LoginDebug", "lat/lon == null => no se pudo obtener");
                     }
                 },
-                e -> {
-                    Log.e("LoginDebug", "Error perms localización: " + e.getMessage());
-                    // Ir a Main
+                ex -> {
+                    Log.e("LoginDebug", "Error permisos => " + ex.getMessage());
                     startActivity(new Intent(this, MainActivity.class));
                     finish();
                 }
         );
     }
+
 
     /**
      * Guardar datos en SharedPreferences

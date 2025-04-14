@@ -3,11 +3,13 @@ package com.example.homeservice.adapter;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.example.homeservice.R;
 import com.example.homeservice.model.Anuncio;
 
@@ -48,8 +50,20 @@ public class AnuncioAdapter extends RecyclerView.Adapter<AnuncioAdapter.AnuncioV
         Anuncio anuncio = listaAnuncios.get(position);
         holder.tvTitulo.setText(anuncio.getTitulo());
         holder.tvOficio.setText(anuncio.getOficio());
-        holder.tvCiudad.setText(anuncio.getLocalizacion());
+        holder.tvLocalizacion.setText(anuncio.getLocalizacion());
         holder.tvDescripcion.setText(anuncio.getDescripcion());
+
+        // Cargar la primera imagen si existe
+        if (!anuncio.getListaImagenes().isEmpty()) {
+            String urlPrimera = anuncio.getListaImagenes().get(0);
+            Glide.with(holder.itemView.getContext())
+                    .load(urlPrimera)
+                    .placeholder(R.drawable.nophoto) // Tu placeholder
+                    .into(holder.ivAnuncio);
+        } else {
+            // Si no hay imágenes, un placeholder
+            holder.ivAnuncio.setImageResource(R.drawable.nophoto);
+        }
 
         // Evento de clic
         holder.itemView.setOnClickListener(v -> {
@@ -71,14 +85,15 @@ public class AnuncioAdapter extends RecyclerView.Adapter<AnuncioAdapter.AnuncioV
      * ViewHolder que contiene las vistas del layout del ítem.
      */
     public static class AnuncioViewHolder extends RecyclerView.ViewHolder {
-        TextView tvTitulo, tvOficio, tvCiudad, tvDescripcion;
+        TextView tvTitulo, tvOficio, tvLocalizacion, tvDescripcion;
+        ImageView ivAnuncio;
 
         public AnuncioViewHolder(@NonNull View itemView) {
             super(itemView);
-            // Referencias a los TextView del item_anuncio.xml
+            ivAnuncio = itemView.findViewById(R.id.ivAnuncio);
             tvTitulo = itemView.findViewById(R.id.tvTitulo);
             tvOficio = itemView.findViewById(R.id.tvOficio);
-            tvCiudad = itemView.findViewById(R.id.tvLocalizacion);
+            tvLocalizacion = itemView.findViewById(R.id.tvLocalizacion);
             tvDescripcion = itemView.findViewById(R.id.tvDescripcion);
         }
     }

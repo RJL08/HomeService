@@ -22,6 +22,7 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.BiConsumer;
 
 /**
  * Clase Helper para manejar permisos y obtener la ubicación
@@ -40,6 +41,40 @@ public class LocationHelper {
         this.fusedLocationClient = LocationServices.getFusedLocationProviderClient(activity);
     }
 
+
+    /**
+     * Retorna lat/lon sin geocodificar ciudad.
+     */
+    public void getUbicacionActual(LocationCallback callback) {
+        if (ActivityCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            // Manejar error o pedir permiso de nuevo
+            callback.onLocationReceived(null, null);
+            return;
+        }
+
+        fusedLocationClient.getLastLocation()
+                .addOnSuccessListener(location -> {
+                    if (location != null) {
+                        callback.onLocationReceived(location.getLatitude(), location.getLongitude());
+                    } else {
+                        // fallback
+                        callback.onLocationReceived(null, null);
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    // fallback
+                    callback.onLocationReceived(null, null);
+                });
+    }
+
+    public interface LocationCallback {
+        void onLocationReceived(Double lat, Double lon);
+    }
+
+    /**
+     * Solicita el permiso de ubicación al usuario.
+     */
     public void solicitarPermisoUbicacion() {
         if (ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -47,7 +82,7 @@ public class LocationHelper {
                     new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
                     REQUEST_CODE_LOCATION);
         } else {
-            obtenerLocalizacion();  // Ya concedido
+              // Ya concedido
         }
     }
 
@@ -56,74 +91,32 @@ public class LocationHelper {
      * @param requestCode Código de solicitud
      * @param permissions Lista de permisos
      * @param grantResults Resultados de los permisos
-     * @param onCiudadObtenida Callback para devolver la ciudad
-     * @param onFailure Callback en caso de error
-     */
-    public void handleRequestPermissionsResult(int requestCode,
-                                               @NonNull String[] permissions,
-                                               @NonNull int[] grantResults,
-                                               OnSuccessListener<String> onCiudadObtenida,
-                                               OnFailureListener onFailure) {
+    */
+    public void handleRequestPermissionsResult(
+            int requestCode,
+            @NonNull String[] permissions,
+            @NonNull int[] grantResults,
+            BiConsumer<Double, Double> onSuccess,     // Devuelve lat, lon
+            OnFailureListener onFailure              // Devuelve Exception
+    ) {
         if (requestCode == REQUEST_CODE_LOCATION) {
-            if (grantResults.length > 0
-                    && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                obtenerLocalizacionInterna(onCiudadObtenida, onFailure);
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Llamar a getUbicacionActual(...)
+                getUbicacionActual((lat, lon) -> {
+                    // si lat/lon no son nulos
+                    if (lat != null && lon != null) {
+                        onSuccess.accept(lat, lon);
+                    } else {
+                        onFailure.onFailure(new Exception("No se pudo obtener lat/lon"));
+                    }
+                });
             } else {
                 onFailure.onFailure(new Exception("Permiso de ubicación denegado"));
             }
         }
     }
 
-    public void obtenerLocalizacion() {
-        obtenerLocalizacionInterna(
-                ciudad -> {
-                    Toast.makeText(activity, "Ciudad: " + ciudad, Toast.LENGTH_SHORT).show();
-                },
-                e -> {
-                    Toast.makeText(activity, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                }
-        );
-    }
-
-    private void obtenerLocalizacionInterna(OnSuccessListener<String> onCiudadObtenida,
-                                            OnFailureListener onFailure) {
-        if (ActivityCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
-            onFailure.onFailure(new Exception("Sin permiso de ubicación"));
-            return;
-        }
-
-        fusedLocationClient.getLastLocation()
-                .addOnSuccessListener(location -> {
-                    if (location != null) {
-                        String ciudad = geocodificarCiudad(location);
-                        if (ciudad == null) ciudad = "Desconocido";
-                        onCiudadObtenida.onSuccess(ciudad);
-
-                        // ❌ Eliminar esta parte si la tenías antes:
-                        // abrir Google Maps con geo:lat,lng
-                    } else {
-                        onFailure.onFailure(new Exception("No se pudo obtener ubicación"));
-                    }
-                })
-                .addOnFailureListener(onFailure);
-    }
 
 
-
-    private String geocodificarCiudad(Location location) {
-        Geocoder geocoder = new Geocoder(activity, Locale.getDefault());
-        try {
-            List<Address> direcciones = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
-            if (!direcciones.isEmpty()) {
-                Address address = direcciones.get(0);
-                String city = address.getLocality();
-                return (city != null) ? city : address.getAdminArea();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
 }
 

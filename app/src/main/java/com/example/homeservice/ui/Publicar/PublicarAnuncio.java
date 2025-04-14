@@ -8,7 +8,9 @@ import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.MediaStore;
+import android.util.Log;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
@@ -19,17 +21,24 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
+
+import com.example.homeservice.MainActivity;
 import com.example.homeservice.R;
 import com.example.homeservice.database.FirestoreHelper;
 import com.example.homeservice.model.Anuncio;
-import com.example.homeservice.ui.Anuncios.HomeFragment;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+
+import java.io.File;
 import java.util.ArrayList;
+import java.util.UUID;
 
 public class PublicarAnuncio extends AppCompatActivity {
 
@@ -47,6 +56,9 @@ public class PublicarAnuncio extends AppCompatActivity {
 
     private ActivityResultLauncher<String> galleryLauncher;
     private ActivityResultLauncher<String> requestGalleryPermissionLauncher;
+
+    // Uri para la última foto tomada con la cámara
+    private Uri uriFotoCamara ;
 
     private EditText etTitulo, etDescripcion, etCiudad;
     private AutoCompleteTextView dropdownCategoria;
@@ -77,63 +89,83 @@ public class PublicarAnuncio extends AppCompatActivity {
 
         // Botón para publicar anuncio
         Button btnPublicar = findViewById(R.id.btnPublicar);
-        // Evento click del botón para publicar
         btnPublicar.setOnClickListener(v -> {
-            publicarAnuncio(); // 🔥 Aquí se llama al método
+            publicarAnuncio();
         });
 
-        // Lanzador para la cámara
+        // ================
+        // L A U N C H E R S
+        // ================
+
+        // (1) Lanzador para la cámara (usa FileProvider)
         cameraLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
-                    if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-                        Bundle extras = result.getData().getExtras();
-                        Bitmap imageBitmap = (Bitmap) extras.get("data");
-                        if (imageBitmap != null && imagenesSeleccionadas.size() < LIMITE_IMAGENES) {
-                            ImageView imgView = new ImageView(this);
-                            imgView.setLayoutParams(new LinearLayout.LayoutParams(200, 200));
-                            imgView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                            imgView.setImageBitmap(imageBitmap);
-                            imgView.setPadding(8, 8, 8, 8);
-                            contenedorImagenes.addView(imgView, contenedorImagenes.getChildCount() - 1);
+                    if (result.getResultCode() == RESULT_OK) {
+                        if (uriFotoCamara != null && imagenesSeleccionadas.size() < LIMITE_IMAGENES) {
+                            Log.d("CamDebug", "OK: Añadiendo foto al contenedor. uriFotoCamara=" + uriFotoCamara);
+                            imagenesSeleccionadas.add(uriFotoCamara);
+                            agregarImagenAlContenedor(uriFotoCamara);
+                        } else {
+                            Log.d("CamDebug", "uriFotoCamara es null o límite superado");
+                        }
+                    } else {
+                        // El usuario canceló
+                        if (uriFotoCamara != null) {
+                            Log.d("CamDebug", "Se canceló, borrando " + uriFotoCamara);
+                            getContentResolver().delete(uriFotoCamara, null, null);
+                            uriFotoCamara = null;
                         }
                     }
                 }
         );
 
-// Permiso de cámara
+
+        // Permiso de cámara
         requestCameraPermissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.RequestPermission(),
                 isGranted -> {
-                    if (isGranted) openCamera();
-                    else Toast.makeText(this, "Permiso de cámara denegado", Toast.LENGTH_SHORT).show();
+                    if (isGranted) {
+                        // Si el permiso se concedió => abrimos cámara
+                        lanzarCamaraConFileProvider();
+                    } else {
+                        Toast.makeText(this, "Permiso de cámara denegado", Toast.LENGTH_SHORT).show();
+                    }
                 }
         );
 
-
-        // Lanzador para galería
+        // (2) Lanzador para galería
         galleryLauncher = registerForActivityResult(
                 new ActivityResultContracts.GetContent(),
                 uri -> {
                     if (uri != null && imagenesSeleccionadas.size() < LIMITE_IMAGENES) {
-                        agregarImagenAlContenedor(uri);
                         imagenesSeleccionadas.add(uri);
+                        agregarImagenAlContenedor(uri);
                     } else {
                         Toast.makeText(this, "Máximo 5 imágenes", Toast.LENGTH_SHORT).show();
                     }
-                });
+                }
+        );
 
-        // Lanzador para permiso
+        // Permiso para la galería
         requestGalleryPermissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.RequestPermission(),
                 isGranted -> {
-                    if (isGranted) openGallery();
-                    else Toast.makeText(this, "Permiso de galería denegado", Toast.LENGTH_SHORT).show();
-                });
+                    if (isGranted) {
+                        openGallery();
+                    } else {
+                        Toast.makeText(this, "Permiso de galería denegado", Toast.LENGTH_SHORT).show();
+                    }
+                }
+        );
 
-        // Evento botón agregar imagen
+        // Botón para agregar imagen (diálogo de opciones)
         btnAgregarImagen.setOnClickListener(v -> mostrarDialogoImagen());
     }
+
+    // ===========================
+    // M A N E J O   D E   P E R M I S O S
+    // ===========================
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
@@ -142,46 +174,24 @@ public class PublicarAnuncio extends AppCompatActivity {
 
         if (requestCode == PERMISSION_CAMERA_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                openCamera();
+                lanzarCamaraConFileProvider();
             } else {
                 Toast.makeText(this, "Permiso de cámara denegado", Toast.LENGTH_SHORT).show();
             }
         }
     }
 
-    private void mostrarDialogoImagen() {
-        if (imagenesSeleccionadas.size() >= LIMITE_IMAGENES) {
-            Toast.makeText(this, "Máximo 5 imágenes permitidas", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        String[] opciones = {"Hacer foto", "Elegir de galería"};
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Seleccionar imagen")
-                .setItems(opciones, (dialog, which) -> {
-                    if (which == 0) {
-                        if (checkCameraPermission()) openCamera();
-                        else requestCameraPermission();
-                    } else {
-                        if (checkReadImagesPermission()) openGallery();
-                        else requestReadImagesPermission();
-                    }
-                })
-                .create()
-                .show();
+    private boolean checkCameraPermission() {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED;
     }
 
-    private void agregarImagenAlContenedor(Uri uri) {
-        ImageView nuevaImagen = new ImageView(this);
-        nuevaImagen.setLayoutParams(new LinearLayout.LayoutParams(200, 200));
-        nuevaImagen.setImageURI(uri);
-        nuevaImagen.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        nuevaImagen.setPadding(8, 8, 8, 8);
-        contenedorImagenes.addView(nuevaImagen, contenedorImagenes.getChildCount() - 1);
-    }
-
-    private void openGallery() {
-        galleryLauncher.launch("image/*");
+    private void requestCameraPermission() {
+        ActivityCompat.requestPermissions(
+                this,
+                new String[]{Manifest.permission.CAMERA},
+                PERMISSION_CAMERA_REQUEST_CODE
+        );
     }
 
     private boolean checkReadImagesPermission() {
@@ -202,45 +212,104 @@ public class PublicarAnuncio extends AppCompatActivity {
         requestGalleryPermissionLauncher.launch(permiso);
     }
 
-    private boolean checkCameraPermission() {
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-                == PackageManager.PERMISSION_GRANTED;
+    // =========================================
+    //  D I Á L O G O   P A R A   E L E G I R
+    // =========================================
+
+    private void mostrarDialogoImagen() {
+        if (imagenesSeleccionadas.size() >= LIMITE_IMAGENES) {
+            Toast.makeText(this, "Máximo 5 imágenes permitidas", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String[] opciones = {"Hacer foto", "Elegir de galería"};
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Seleccionar imagen")
+                .setItems(opciones, (dialog, which) -> {
+                    if (which == 0) {
+                        // Opción Cámara
+                        if (checkCameraPermission()) {
+                            lanzarCamaraConFileProvider();
+                        } else {
+                            requestCameraPermission();
+                        }
+                    } else {
+                        // Opción Galería
+                        if (checkReadImagesPermission()) {
+                            openGallery();
+                        } else {
+                            requestReadImagesPermission();
+                        }
+                    }
+                })
+                .create()
+                .show();
     }
 
-    private void requestCameraPermission() {
-        ActivityCompat.requestPermissions(
+    // ===========================
+    // C Á M A R A   Y   G A L E R Í A
+    // ===========================
+
+    /**
+     * Abre la galería usando el launcher de getContent().
+     */
+    private void openGallery() {
+        galleryLauncher.launch("image/*");
+    }
+
+    /**
+     * Usa FileProvider para crear un Uri donde la cámara guardará la foto.
+     */
+    private void lanzarCamaraConFileProvider() {
+        // 1) Creamos un archivo en la carpeta "Pictures" privada de la app
+        File directorioFotos = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        String nombreFoto = "foto_" + System.currentTimeMillis() + ".jpg";
+        File archivoFoto = new File(directorioFotos, nombreFoto);
+
+        // 2) Uri con la autoridad en duro
+         uriFotoCamara = FileProvider.getUriForFile(
                 this,
-                new String[]{Manifest.permission.CAMERA},
-                PERMISSION_CAMERA_REQUEST_CODE
+                "com.example.homeservice.fileprovider", // EN DURO, mismo que en Manifest
+                archivoFoto
         );
-    }
 
-
-    private void openCamera() {
+        // 2) Intent de la cámara
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        // Decimos a la cámara que guarde el resultado en uriFotoCamara
+        intent.putExtra(MediaStore.EXTRA_OUTPUT, uriFotoCamara);
+
+        // Lanzamos con cameraLauncher
         cameraLauncher.launch(intent);
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
+    // =====================================
+    // A G R E G A R   I M Á G E N   A   U I
+    // =====================================
 
-        if (resultCode == RESULT_OK) {
-            if (requestCode == REQUEST_IMAGE_CAPTURE && data != null) {
-                Bundle extras = data.getExtras();
-                Bitmap imageBitmap = (Bitmap) extras.get("data");
-                if (imageBitmap != null && imagenesSeleccionadas.size() < LIMITE_IMAGENES) {
-                    ImageView imgView = new ImageView(this);
-                    imgView.setLayoutParams(new LinearLayout.LayoutParams(200, 200));
-                    imgView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                    imgView.setImageBitmap(imageBitmap);
-                    imgView.setPadding(8, 8, 8, 8);
-                    contenedorImagenes.addView(imgView, contenedorImagenes.getChildCount() - 1);
-                }
-            }
-        }
+    /**
+     * Muestra la imagen (Uri) en nuestro contenedorImagenes.
+     */
+    private void agregarImagenAlContenedor(Uri uri) {
+        Log.d("CamDebug", "agregarImagenAlContenedor => " + uri);
+
+        ImageView nuevaImagen = new ImageView(this);
+        nuevaImagen.setLayoutParams(new LinearLayout.LayoutParams(200, 200));
+        nuevaImagen.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        nuevaImagen.setPadding(8, 8, 8, 8);
+
+        // Carga de imagen
+        // O bien .setImageURI(uri) si te vale
+        // O Glide si quieres un mejor manejo
+        nuevaImagen.setImageURI(uri);
+        // O: Glide.with(this).load(uri).into(nuevaImagen);
+
+        contenedorImagenes.addView(nuevaImagen, contenedorImagenes.getChildCount());
     }
 
+
+    // =====================
+    //  P U B L I C A R
+    // =====================
     private void publicarAnuncio() {
         String titulo = etTitulo.getText().toString().trim();
         String descripcion = etDescripcion.getText().toString().trim();
@@ -248,7 +317,7 @@ public class PublicarAnuncio extends AppCompatActivity {
         String ciudad = etCiudad.getText().toString().trim();
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
 
-        // Validación básica
+        // 1) Validaciones mínimas
         if (titulo.isEmpty()) {
             etTitulo.setError("Título requerido");
             etTitulo.requestFocus();
@@ -273,8 +342,13 @@ public class PublicarAnuncio extends AppCompatActivity {
             Toast.makeText(this, "Usuario no autenticado", Toast.LENGTH_SHORT).show();
             return;
         }
+        // Forzamos mínimo 1 imagen
+        if (imagenesSeleccionadas.isEmpty()) {
+            Toast.makeText(this, "Debes añadir al menos 1 imagen", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
-        // Crear objeto Anuncio
+        // 2) Creamos objeto Anuncio
         Anuncio anuncio = new Anuncio(
                 titulo,
                 descripcion,
@@ -284,22 +358,59 @@ public class PublicarAnuncio extends AppCompatActivity {
                 System.currentTimeMillis()
         );
 
-        // Usar FirestoreHelper
+        // 3) Subimos imágenes al Storage, y cuando termine, guardamos en Firestore
+        subirImagenesYCrearAnuncio(anuncio);
+    }
+
+    private void subirImagenesYCrearAnuncio(Anuncio anuncio) {
+        // Aquí guardaremos las URLs finales
+        ArrayList<String> urlsSubidas = new ArrayList<>();
+
+        // Para saber cuántas subidas faltan
+        final int totalImagenes = imagenesSeleccionadas.size();
+        final int[] contadorExitos = {0};
+
+        // Recorremos cada Uri de la lista
+        for (Uri uriImagen : imagenesSeleccionadas) {
+            String nombreEnStorage = "anuncios/" + UUID.randomUUID().toString() + ".jpg";
+            StorageReference storageRef = FirebaseStorage.getInstance().getReference().child(nombreEnStorage);
+
+            storageRef.putFile(uriImagen)
+                    .addOnSuccessListener(taskSnapshot -> {
+                        // Al subir con éxito, pedimos su downloadURL
+                        storageRef.getDownloadUrl().addOnSuccessListener(downloadUri -> {
+                            urlsSubidas.add(downloadUri.toString());
+
+                            // Actualizamos contador
+                            contadorExitos[0]++;
+                            // Si ya se han subido TODAS => guardamos el anuncio
+                            if (contadorExitos[0] == totalImagenes) {
+                                anuncio.setListaImagenes(urlsSubidas);
+                                guardarAnuncioEnFirestore(anuncio);
+                            }
+                        });
+                    })
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(this, "Error al subir imagen: " + e.getMessage(),
+                                Toast.LENGTH_SHORT).show();
+                    });
+        }
+    }
+
+    private void guardarAnuncioEnFirestore(Anuncio anuncio) {
         FirestoreHelper firestoreHelper = new FirestoreHelper();
-        firestoreHelper.crearAnuncio(anuncio,
+        firestoreHelper.crearAnuncio(
+                anuncio,
                 id -> {
-                    Toast.makeText(this, "Anuncio publicado correctamente", Toast.LENGTH_SHORT).show();
-                    // Ir a MainActivity donde se muestra el anuncio
-                    Intent intent = new Intent(PublicarAnuncio.this, HomeFragment.class);
-                    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-                    startActivity(intent);
+                    Toast.makeText(this, "Anuncio publicado con ID: " + id, Toast.LENGTH_SHORT).show();
+                    // Redirigir a MainActivity
+                    startActivity(new Intent(PublicarAnuncio.this, MainActivity.class));
                     finish();
                 },
                 error -> {
-                    Toast.makeText(this, "Error al publicar: " + error.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Error al guardar anuncio: " + error.getMessage(),
+                            Toast.LENGTH_SHORT).show();
                 }
         );
     }
-
-
 }
