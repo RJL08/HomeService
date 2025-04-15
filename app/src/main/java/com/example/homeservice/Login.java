@@ -149,7 +149,9 @@ public class Login extends AppCompatActivity {
                                                 "ApellidosDesconocidos",
                                                 user.getEmail(),
                                                 "",
-                                                "fotoPerfilDefault"
+                                                "fotoPerfilDefault",
+                                                null,
+                                                null
                                         );
                                         firestoreHelper.guardarUsuario(
                                                 userId,
@@ -255,7 +257,7 @@ public class Login extends AppCompatActivity {
 
                         // Guardar en Firestore sin ciudad
                         FirestoreHelper firestoreHelper = new FirestoreHelper();
-                        Usuario usuario = new Usuario(userId, nombre, apellidos, correo, "", foto);
+                        Usuario usuario = new Usuario(userId, nombre, apellidos, correo, "", foto, null, null);
                         firestoreHelper.guardarUsuario(
                                 userId,
                                 usuario,
@@ -289,6 +291,7 @@ public class Login extends AppCompatActivity {
 
     /**
      * Si ya hay permiso => obtener lat/lng => geocodificar => actualizar Firestore
+     * (MODIFICADO para también setear lat y lon en el usuario)
      */
     private void obtenerLocalizacionYActualizar() {
         Log.d("LoginDebug", "obtenerLocalizacionYActualizar: entrando");
@@ -302,11 +305,15 @@ public class Login extends AppCompatActivity {
         client.getLastLocation()
                 .addOnSuccessListener(location -> {
                     if (location != null) {
-                        Log.d("LoginDebug", "getLastLocation onSuccess. Lat=" + location.getLatitude() + " Lng=" + location.getLongitude());
+                        double lat = location.getLatitude();
+                        double lon = location.getLongitude();
+                        Log.d("LoginDebug", "getLastLocation onSuccess. Lat=" + lat + " Lng=" + lon);
+
+                        // Usamos Geocoder local (si lo deseas), o LocationIQ. Aquí se deja la lógica tal cual
                         String ciudad = "Desconocido";
                         try {
                             List<Address> direcciones = new Geocoder(this, Locale.getDefault())
-                                    .getFromLocation(location.getLatitude(), location.getLongitude(), 1);
+                                    .getFromLocation(lat, lon, 1);
                             if (direcciones != null && !direcciones.isEmpty()) {
                                 Address address = direcciones.get(0);
                                 String city = address.getLocality();
@@ -317,20 +324,27 @@ public class Login extends AppCompatActivity {
                             Log.e("LoginDebug", "Error en geocodificar ciudad: " + e.getMessage());
                         }
 
+                        // 1) Leer usuario en Firestore
                         FirebaseUser user = firebaseAuth.getCurrentUser();
                         if (user != null) {
                             String userId = user.getUid();
                             FirestoreHelper firestoreHelper = new FirestoreHelper();
                             String finalCiudad = ciudad;
+
                             firestoreHelper.leerUsuario(
                                     userId,
                                     usuarioLeido -> {
                                         if (usuarioLeido != null) {
+                                            // 2) Asignar lat, lon y localizacion
+                                            usuarioLeido.setLat(lat);
+                                            usuarioLeido.setLon(lon);
                                             usuarioLeido.setLocalizacion(finalCiudad);
+
+                                            // 3) Guardar
                                             firestoreHelper.guardarUsuario(
                                                     userId,
                                                     usuarioLeido,
-                                                    aVoid -> Log.d("Login", "Localización actualizada: " + finalCiudad),
+                                                    aVoid -> Log.d("Login", "Localización actualizada: " + finalCiudad + " lat=" + lat + " lon=" + lon),
                                                     error -> Log.e("Login", "Error guardando localización: " + error.getMessage())
                                             );
                                         } else {
@@ -351,6 +365,7 @@ public class Login extends AppCompatActivity {
 
     /**
      * onRequestPermissionsResult => si se concede => update localización
+     * (MODIFICADO para también setear lat y lon en el usuario)
      */
     @Override
     public void onRequestPermissionsResult(int requestCode,
@@ -358,40 +373,37 @@ public class Login extends AppCompatActivity {
                                            @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        // Suponiendo que handleRequestPermissionsResult(...) recibe (lat, lon) en onSuccess
         locationHelper.handleRequestPermissionsResult(
                 requestCode,
                 permissions,
                 grantResults,
                 (lat, lon) -> {
-                    // lat, lon son Double
                     if (lat != null && lon != null) {
+                        // Llamamos a LocationIQ si quieres geocodificar
                         LocationIQHelper.reverseGeocode(
                                 lat, lon,
-                                ciudad -> {  // ← en vez de cityName
+                                ciudad -> {
                                     Log.d("LoginDebug", "ReverseGeocode => ciudad=" + ciudad);
                                     FirebaseUser user = firebaseAuth.getCurrentUser();
                                     if (user != null) {
                                         String userId = user.getUid();
                                         FirestoreHelper firestoreHelper = new FirestoreHelper();
 
-                                        // Leer usuario
                                         firestoreHelper.leerUsuario(
                                                 userId,
                                                 usuarioLeido -> {
                                                     if (usuarioLeido != null) {
                                                         // setLocalizacion con 'ciudad'
                                                         usuarioLeido.setLocalizacion(ciudad);
-
-                                                        // O si quieres lat/lon, asumiendo que has añadido esos campos
-                                                        // usuarioLeido.setLat(lat);
-                                                        // usuarioLeido.setLon(lon);
+                                                        // También guardamos lat/lon en el usuario
+                                                        usuarioLeido.setLat(lat);
+                                                        usuarioLeido.setLon(lon);
 
                                                         firestoreHelper.guardarUsuario(
                                                                 userId,
                                                                 usuarioLeido,
                                                                 aVoid -> {
-                                                                    Log.d("LoginDebug", "Localización actualizada: " + ciudad);
+                                                                    Log.d("LoginDebug", "Localización actualizada: " + ciudad + " lat=" + lat + " lon=" + lon);
                                                                     startActivity(new Intent(Login.this, MainActivity.class));
                                                                     finish();
                                                                 },
@@ -405,7 +417,6 @@ public class Login extends AppCompatActivity {
                                 },
                                 ex -> {
                                     Log.e("LoginDebug", "Error LocationIQ => " + ex.getMessage());
-                                    // Si LocationIQ falla => Localizacion = "Desconocido" o no actualizamos
                                 }
                         );
                     } else {
@@ -419,7 +430,6 @@ public class Login extends AppCompatActivity {
                 }
         );
     }
-
 
     /**
      * Guardar datos en SharedPreferences

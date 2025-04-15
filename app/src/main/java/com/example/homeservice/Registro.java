@@ -154,11 +154,11 @@ public class Registro extends AppCompatActivity {
                         userIdCreado = user.getUid();
                         Log.d("RegistroDebug", "userIdCreado=" + userIdCreado);
 
-                        // Guardar con ciudad = ""
+                        // Guardar con ciudad = "" y lat/lon = null
                         guardarDatosExtra(userIdCreado, nombre, apellidos, correo, "");
 
-                        // Si permiso ya => actualizamos localización
-                        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PERMISSION_GRANTED) {
+                        // Si permiso YA => actualizamos localización
+                        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                             Log.d("RegistroDebug", "Permiso YA concedido, actualizarLocalizacionSiYaConcedido()");
                             actualizarLocalizacionSiYaConcedido();
                         } else {
@@ -176,11 +176,11 @@ public class Registro extends AppCompatActivity {
     }
 
     /**
-     * Actualiza la ciudad si el permiso YA estaba concedido
+     * Actualiza la ciudad y lat/lon si el permiso YA estaba concedido
      */
     private void actualizarLocalizacionSiYaConcedido() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                != PERMISSION_GRANTED) {
+                != PackageManager.PERMISSION_GRANTED) {
             return;
         }
 
@@ -191,44 +191,45 @@ public class Registro extends AppCompatActivity {
                 double lat = location.getLatitude();
                 double lon = location.getLongitude();
 
-                // Llamar a LocationIQ
+                // Llamar a LocationIQ si deseas ciudad
                 LocationIQHelper.reverseGeocode(lat, lon,
                         cityName -> {
-                            // cityName es la ciudad devuelta por LocationIQ
                             Log.d("RegistroDebug", "LocationIQ => " + cityName);
-
-                            // 1) Guardar la ciudad en Firestore
+                            // 1) Guardar la ciudad
                             actualizarSoloCiudad(userIdCreado, cityName);
 
-                            // 2) Opcional: guardar lat/lon
+                            // 2) Guardar lat/lon
                             firestore.collection("usuarios")
                                     .document(userIdCreado)
                                     .update("lat", lat, "lon", lon)
                                     .addOnSuccessListener(aVoid -> {
-                                        Log.d("RegistroDebug", "Lat/Lon guardados en Firestore");
+                                        Log.d("RegistroDebug", "Lat/Lon guardados en Firestore (permiso YA concedido)");
                                     })
                                     .addOnFailureListener(e -> {
                                         Log.e("RegistroDebug", "Error guardando lat/lon: " + e.getMessage());
                                     });
                         },
                         error -> {
-                            // Hubo algún fallo en LocationIQ
                             Log.e("RegistroDebug", "Error locationIQ => " + error.getMessage());
-                            // Ponemos ciudad desconocida
+                            // Si falla, asigna "Desconocido" pero igual guarda lat/lon
                             actualizarSoloCiudad(userIdCreado, "Desconocido");
+
+                            firestore.collection("usuarios")
+                                    .document(userIdCreado)
+                                    .update("lat", lat, "lon", lon)
+                                    .addOnSuccessListener(aVoid -> {
+                                        Log.d("RegistroDebug", "Lat/Lon guardados, city=Desconocido (permiso YA)");
+                                    });
                         }
                 );
 
             } else {
-                // location == null => no se pudo obtener
                 Log.d("RegistroDebug", "location == null => no se pudo obtener lat/lon");
             }
         }).addOnFailureListener(e -> {
             Log.e("RegistroDebug", "getLastLocation => onFailure: " + e.getMessage());
         });
     }
-
-
 
     /**
      * onRequestPermissionsResult => si se concede => actualizamos
@@ -247,27 +248,34 @@ public class Registro extends AppCompatActivity {
                     // Éxito => LocationHelper nos dio lat y lon
                     LocationIQHelper.reverseGeocode(lat, lon,
                             cityName -> {
-                                // cityName es tu ciudad devuelta por LocationIQ
                                 Log.d("RegistroDebug", "CityName => " + cityName);
                                 if (userIdCreado != null) {
+                                    // ciudad
                                     actualizarSoloCiudad(userIdCreado, cityName);
+
+                                    // lat/lon
                                     FirebaseFirestore.getInstance()
                                             .collection("usuarios")
                                             .document(userIdCreado)
-                                            .update("lat", lat, "lon", lon);
+                                            .update("lat", lat, "lon", lon)
+                                            .addOnSuccessListener(aVoid -> {
+                                                Log.d("RegistroDebug", "Lat/Lon guardados con permisos concedidos");
+                                            })
+                                            .addOnFailureListener(e -> {
+                                                Log.e("RegistroDebug", "Error guardando lat/lon: " + e.getMessage());
+                                            });
                                 }
                             },
                             ex -> {
-                                // ex es Exception => ex.getMessage()
                                 Log.e("RegistroDebug", "Error al hacer reverse geocode: " + ex.getMessage());
                                 if (userIdCreado != null) {
+                                    // Ciudad "Desconocido"
                                     actualizarSoloCiudad(userIdCreado, "Desconocido");
                                 }
                             }
                     );
                 },
                 ex -> {
-                    // ex es Exception => ex.getMessage() OK
                     Log.e("RegistroDebug", "handleRequestPermissionsResult -> onFailure: " + ex.getMessage());
                     Toast.makeText(this, "No se obtuvo la localización: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
                 }
@@ -304,13 +312,9 @@ public class Registro extends AppCompatActivity {
     private void guardarDatosExtra(String userId, String nombre, String apellidos, String correo, String ciudad) {
 
         String fotoPerfil = "default";
+        // lat/lon = null al principio
         Usuario usuario = new Usuario(
-                userId,
-                nombre,
-                apellidos,
-                correo,
-                ciudad,
-                fotoPerfil
+                userId, nombre, apellidos, correo, ciudad, fotoPerfil, null, null
         );
 
         FirebaseFirestore.getInstance().collection("usuarios")
@@ -322,8 +326,8 @@ public class Registro extends AppCompatActivity {
                     // (A) Guardar en SharedPreferences para que MainActivity pueda leerlos
                     guardarDatosEnPrefs(
                             nombre, // userName
-                            correo,                  // userEmail
-                            fotoPerfil               // userPhoto (ahora "default")
+                            correo, // userEmail
+                            fotoPerfil // userPhoto (ahora "default")
                     );
 
                     // (B) Mantienes la lógica de registroCompleto

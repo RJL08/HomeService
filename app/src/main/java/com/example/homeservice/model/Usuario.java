@@ -34,16 +34,24 @@ public class Usuario {
      * @param localizacion  Nombre de la ciudad o ubicación textual
      * @param fotoPerfil    URL de la foto de perfil
      */
-    public Usuario(String id, String nombre, String apellidos,
-                   String correo, String localizacion,
-                   String fotoPerfil) {
+    public Usuario(String id,
+                   String nombre,
+                   String apellidos,
+                   String correo,
+                   String localizacion,
+                   String fotoPerfil,
+                   Double lat,
+                   Double lon) {
         this.id = id;
         this.nombre = nombre;
         this.apellidos = apellidos;
         this.correo = correo;
         this.localizacion = localizacion;
         this.fotoPerfil = fotoPerfil;
+        this.lat = lat;
+        this.lon = lon;
     }
+
 
     // Getters y setters de todos los campos:
 

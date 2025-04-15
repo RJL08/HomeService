@@ -4,7 +4,6 @@ import android.Manifest;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -17,16 +16,16 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
-
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
-
+import com.bumptech.glide.Glide;
 import com.example.homeservice.MainActivity;
 import com.example.homeservice.R;
 import com.example.homeservice.database.FirestoreHelper;
@@ -35,7 +34,6 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.UUID;
@@ -53,15 +51,21 @@ public class PublicarAnuncio extends AppCompatActivity {
 
     private ActivityResultLauncher<Intent> cameraLauncher;
     private ActivityResultLauncher<String> requestCameraPermissionLauncher;
-
     private ActivityResultLauncher<String> galleryLauncher;
     private ActivityResultLauncher<String> requestGalleryPermissionLauncher;
 
     // Uri para la última foto tomada con la cámara
-    private Uri uriFotoCamara ;
+    private Uri uriFotoCamara;
 
-    private EditText etTitulo, etDescripcion, etCiudad;
+    private EditText etTitulo, etDescripcion;
     private AutoCompleteTextView dropdownCategoria;
+    private TextView tvUbicacion;
+    // Para mostrar un mapa estático
+    private ImageView ivMapa;
+
+    // Guardaremos la lat/lon del usuario
+    private Double latUser = null;
+    private Double lonUser = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,10 +77,10 @@ public class PublicarAnuncio extends AppCompatActivity {
 
         etTitulo = findViewById(R.id.etTitulo);
         etDescripcion = findViewById(R.id.etDescripcion);
-        etCiudad = findViewById(R.id.etCiudad);
+        tvUbicacion = findViewById(R.id.tvUbicacion);
+
 
         dropdownCategoria = findViewById(R.id.dropdownCategoria);
-        // Adaptador con el array de strings definido en strings.xml
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
                 this,
                 android.R.layout.simple_dropdown_item_1line,
@@ -85,7 +89,7 @@ public class PublicarAnuncio extends AppCompatActivity {
         dropdownCategoria.setAdapter(adapter);
         dropdownCategoria.setKeyListener(null); // Desactiva la escritura manual
         dropdownCategoria.setFocusable(false);  // Desactiva el foco manual
-        dropdownCategoria.setOnClickListener(v -> dropdownCategoria.showDropDown()); // Muestra opciones al tocar
+        dropdownCategoria.setOnClickListener(v -> dropdownCategoria.showDropDown());
 
         // Botón para publicar anuncio
         Button btnPublicar = findViewById(R.id.btnPublicar);
@@ -96,8 +100,6 @@ public class PublicarAnuncio extends AppCompatActivity {
         // ================
         // L A U N C H E R S
         // ================
-
-        // (1) Lanzador para la cámara (usa FileProvider)
         cameraLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
@@ -120,8 +122,6 @@ public class PublicarAnuncio extends AppCompatActivity {
                 }
         );
 
-
-        // Permiso de cámara
         requestCameraPermissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.RequestPermission(),
                 isGranted -> {
@@ -134,7 +134,6 @@ public class PublicarAnuncio extends AppCompatActivity {
                 }
         );
 
-        // (2) Lanzador para galería
         galleryLauncher = registerForActivityResult(
                 new ActivityResultContracts.GetContent(),
                 uri -> {
@@ -147,7 +146,6 @@ public class PublicarAnuncio extends AppCompatActivity {
                 }
         );
 
-        // Permiso para la galería
         requestGalleryPermissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.RequestPermission(),
                 isGranted -> {
@@ -159,26 +157,90 @@ public class PublicarAnuncio extends AppCompatActivity {
                 }
         );
 
-        // Botón para agregar imagen (diálogo de opciones)
         btnAgregarImagen.setOnClickListener(v -> mostrarDialogoImagen());
+
+        // NUEVO: leer la info del usuario para mostrar su ciudad y el mapa
+        cargarDatosUsuarioYMostrarMapa();
     }
 
-    // ===========================
-    // M A N E J O   D E   P E R M I S O S
-    // ===========================
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
-                                           @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        if (requestCode == PERMISSION_CAMERA_REQUEST_CODE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                lanzarCamaraConFileProvider();
-            } else {
-                Toast.makeText(this, "Permiso de cámara denegado", Toast.LENGTH_SHORT).show();
-            }
+    private void cargarDatosUsuarioYMostrarMapa() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) {
+            Log.w("PublicarAnuncio", "No hay usuario autenticado, no se puede leer la ubicación");
+            return;
         }
+        String userId = user.getUid();
+        FirestoreHelper firestoreHelper = new FirestoreHelper();
+        firestoreHelper.leerUsuario(
+                userId,
+                usuarioLeido -> {
+                    if (usuarioLeido != null) {
+                        // Asignamos la ciudad al TextView, en caso de que exista
+                        if (usuarioLeido.getLocalizacion() != null && !usuarioLeido.getLocalizacion().isEmpty()) {
+                            tvUbicacion.setText(usuarioLeido.getLocalizacion());
+                        }
+                        // Guardamos lat/lon en variables locales
+                        latUser = usuarioLeido.getLat();
+                        lonUser = usuarioLeido.getLon();
+
+                    }
+                },
+                error -> {
+                    Log.e("PublicarAnuncio", "Error leyendo usuario => " + error.getMessage());
+                }
+        );
+    }
+
+
+    // =========================================
+    //  D I Á L O G O   P A R A   E L E G I R
+    // =========================================
+    private void mostrarDialogoImagen() {
+        if (imagenesSeleccionadas.size() >= LIMITE_IMAGENES) {
+            Toast.makeText(this, "Máximo 5 imágenes permitidas", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String[] opciones = {"Hacer foto", "Elegir de galería"};
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Seleccionar imagen")
+                .setItems(opciones, (dialog, which) -> {
+                    if (which == 0) {
+                        if (checkCameraPermission()) {
+                            lanzarCamaraConFileProvider();
+                        } else {
+                            requestCameraPermission();
+                        }
+                    } else {
+                        if (checkReadImagesPermission()) {
+                            openGallery();
+                        } else {
+                            requestReadImagesPermission();
+                        }
+                    }
+                })
+                .create()
+                .show();
+    }
+
+    private void openGallery() {
+        galleryLauncher.launch("image/*");
+    }
+
+    private void lanzarCamaraConFileProvider() {
+        File directorioFotos = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        String nombreFoto = "foto_" + System.currentTimeMillis() + ".jpg";
+        File archivoFoto = new File(directorioFotos, nombreFoto);
+
+        uriFotoCamara = FileProvider.getUriForFile(
+                this,
+                "com.example.homeservice.fileprovider",
+                archivoFoto
+        );
+
+        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        intent.putExtra(MediaStore.EXTRA_OUTPUT, uriFotoCamara);
+        cameraLauncher.launch(intent);
     }
 
     private boolean checkCameraPermission() {
@@ -212,100 +274,29 @@ public class PublicarAnuncio extends AppCompatActivity {
         requestGalleryPermissionLauncher.launch(permiso);
     }
 
-    // =========================================
-    //  D I Á L O G O   P A R A   E L E G I R
-    // =========================================
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-    private void mostrarDialogoImagen() {
-        if (imagenesSeleccionadas.size() >= LIMITE_IMAGENES) {
-            Toast.makeText(this, "Máximo 5 imágenes permitidas", Toast.LENGTH_SHORT).show();
-            return;
+        if (requestCode == PERMISSION_CAMERA_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                lanzarCamaraConFileProvider();
+            } else {
+                Toast.makeText(this, "Permiso de cámara denegado", Toast.LENGTH_SHORT).show();
+            }
         }
-
-        String[] opciones = {"Hacer foto", "Elegir de galería"};
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Seleccionar imagen")
-                .setItems(opciones, (dialog, which) -> {
-                    if (which == 0) {
-                        // Opción Cámara
-                        if (checkCameraPermission()) {
-                            lanzarCamaraConFileProvider();
-                        } else {
-                            requestCameraPermission();
-                        }
-                    } else {
-                        // Opción Galería
-                        if (checkReadImagesPermission()) {
-                            openGallery();
-                        } else {
-                            requestReadImagesPermission();
-                        }
-                    }
-                })
-                .create()
-                .show();
     }
 
-    // ===========================
-    // C Á M A R A   Y   G A L E R Í A
-    // ===========================
-
-    /**
-     * Abre la galería usando el launcher de getContent().
-     */
-    private void openGallery() {
-        galleryLauncher.launch("image/*");
-    }
-
-    /**
-     * Usa FileProvider para crear un Uri donde la cámara guardará la foto.
-     */
-    private void lanzarCamaraConFileProvider() {
-        // 1) Creamos un archivo en la carpeta "Pictures" privada de la app
-        File directorioFotos = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-        String nombreFoto = "foto_" + System.currentTimeMillis() + ".jpg";
-        File archivoFoto = new File(directorioFotos, nombreFoto);
-
-        // 2) Uri con la autoridad en duro
-         uriFotoCamara = FileProvider.getUriForFile(
-                this,
-                "com.example.homeservice.fileprovider", // EN DURO, mismo que en Manifest
-                archivoFoto
-        );
-
-        // 2) Intent de la cámara
-        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        // Decimos a la cámara que guarde el resultado en uriFotoCamara
-        intent.putExtra(MediaStore.EXTRA_OUTPUT, uriFotoCamara);
-
-        // Lanzamos con cameraLauncher
-        cameraLauncher.launch(intent);
-    }
-
-    // =====================================
-    // A G R E G A R   I M Á G E N   A   U I
-    // =====================================
-
-    /**
-     * Muestra la imagen (Uri) en nuestro contenedorImagenes.
-     */
     private void agregarImagenAlContenedor(Uri uri) {
-        Log.d("CamDebug", "agregarImagenAlContenedor => " + uri);
-
         ImageView nuevaImagen = new ImageView(this);
         nuevaImagen.setLayoutParams(new LinearLayout.LayoutParams(200, 200));
         nuevaImagen.setScaleType(ImageView.ScaleType.CENTER_CROP);
         nuevaImagen.setPadding(8, 8, 8, 8);
 
-        // Carga de imagen
-        // O bien .setImageURI(uri) si te vale
-        // O Glide si quieres un mejor manejo
         nuevaImagen.setImageURI(uri);
-        // O: Glide.with(this).load(uri).into(nuevaImagen);
-
         contenedorImagenes.addView(nuevaImagen, contenedorImagenes.getChildCount());
     }
-
 
     // =====================
     //  P U B L I C A R
@@ -314,7 +305,8 @@ public class PublicarAnuncio extends AppCompatActivity {
         String titulo = etTitulo.getText().toString().trim();
         String descripcion = etDescripcion.getText().toString().trim();
         String oficio = dropdownCategoria.getText().toString().trim();
-        String ciudad = etCiudad.getText().toString().trim();
+        String ciudad = tvUbicacion.getText().toString().trim();
+
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
 
         // 1) Validaciones mínimas
@@ -328,11 +320,7 @@ public class PublicarAnuncio extends AppCompatActivity {
             dropdownCategoria.requestFocus();
             return;
         }
-        if (ciudad.isEmpty()) {
-            etCiudad.setError("Ciudad requerida");
-            etCiudad.requestFocus();
-            return;
-        }
+
         if (descripcion.isEmpty()) {
             etDescripcion.setError("Descripción requerida");
             etDescripcion.requestFocus();
@@ -342,7 +330,6 @@ public class PublicarAnuncio extends AppCompatActivity {
             Toast.makeText(this, "Usuario no autenticado", Toast.LENGTH_SHORT).show();
             return;
         }
-        // Forzamos mínimo 1 imagen
         if (imagenesSeleccionadas.isEmpty()) {
             Toast.makeText(this, "Debes añadir al menos 1 imagen", Toast.LENGTH_SHORT).show();
             return;
@@ -358,32 +345,35 @@ public class PublicarAnuncio extends AppCompatActivity {
                 System.currentTimeMillis()
         );
 
-        // 3) Subimos imágenes al Storage, y cuando termine, guardamos en Firestore
+        // NUEVO: Asignar lat/lon del user
+        // (si user introdujo otra ciudad manual, no lo controlamos aquí
+        //  Se quedaría con latUser/lonUser => la localización real,
+        //  y la "ciudad" del EditText quizás no coincide.
+        //  En un futuro podrías hacer forward geocode o algo)
+        if (latUser != null && lonUser != null) {
+            anuncio.setLatitud(latUser);
+            anuncio.setLongitud(lonUser);
+        }
+
+        // 3) Subir imágenes al Storage, y cuando termine, guardamos en Firestore
         subirImagenesYCrearAnuncio(anuncio);
     }
 
     private void subirImagenesYCrearAnuncio(Anuncio anuncio) {
-        // Aquí guardaremos las URLs finales
         ArrayList<String> urlsSubidas = new ArrayList<>();
-
-        // Para saber cuántas subidas faltan
         final int totalImagenes = imagenesSeleccionadas.size();
         final int[] contadorExitos = {0};
 
-        // Recorremos cada Uri de la lista
         for (Uri uriImagen : imagenesSeleccionadas) {
             String nombreEnStorage = "anuncios/" + UUID.randomUUID().toString() + ".jpg";
             StorageReference storageRef = FirebaseStorage.getInstance().getReference().child(nombreEnStorage);
 
             storageRef.putFile(uriImagen)
                     .addOnSuccessListener(taskSnapshot -> {
-                        // Al subir con éxito, pedimos su downloadURL
                         storageRef.getDownloadUrl().addOnSuccessListener(downloadUri -> {
                             urlsSubidas.add(downloadUri.toString());
-
-                            // Actualizamos contador
                             contadorExitos[0]++;
-                            // Si ya se han subido TODAS => guardamos el anuncio
+
                             if (contadorExitos[0] == totalImagenes) {
                                 anuncio.setListaImagenes(urlsSubidas);
                                 guardarAnuncioEnFirestore(anuncio);
@@ -403,7 +393,6 @@ public class PublicarAnuncio extends AppCompatActivity {
                 anuncio,
                 id -> {
                     Toast.makeText(this, "Anuncio publicado con ID: " + id, Toast.LENGTH_SHORT).show();
-                    // Redirigir a MainActivity
                     startActivity(new Intent(PublicarAnuncio.this, MainActivity.class));
                     finish();
                 },

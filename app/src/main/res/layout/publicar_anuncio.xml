@@ -32,16 +32,20 @@
         android:layout_marginTop="16dp"/>
 
     <!-- Campo para la ciudad/localización -->
-    <EditText
-        android:id="@+id/etCiudad"
+    <!-- Campo de solo lectura para mostrar la ubicación -->
+    <TextView
+        android:id="@+id/tvUbicacion"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:hint="Ciudad o localidad"
-        android:inputType="textCapWords"
+        android:text="Ubicación"
+        android:textAppearance="?android:attr/textAppearanceMedium"
         app:layout_constraintTop_toBottomOf="@id/dropdownCategoria"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="16dp"/>
+        android:layout_marginTop="16dp"
+        android:padding="8dp"
+        android:background="@drawable/border_background"/>
+
 
     <!-- Contenedor de imágenes + botón agregar -->
     <HorizontalScrollView
@@ -51,7 +55,7 @@
         android:layout_marginTop="16dp"
         android:fillViewport="true"
         android:scrollbars="none"
-        app:layout_constraintTop_toBottomOf="@id/etCiudad"
+        app:layout_constraintTop_toBottomOf="@id/tvUbicacion"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
