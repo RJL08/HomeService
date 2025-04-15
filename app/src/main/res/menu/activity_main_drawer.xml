@@ -24,8 +24,15 @@
             android:title="@string/menu_slideshow" />
 
         <item
+            android:id="@+id/nav_notify"
+            android:icon="@drawable/notify"
+            android:title="Notifiaciones" />
+
+        <item
             android:id="@+id/nav_logout"
             android:icon="@drawable/logout_24px"
             android:title="Cerrar sesión" />
+
+
     </group>
 </menu>

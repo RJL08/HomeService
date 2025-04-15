@@ -55,6 +55,14 @@
             android:name=".Registro"
             android:exported="true" />
 
+        <activity
+            android:name=".ui.chat.ChatActivity"
+            android:exported="true">
+        </activity>
+
+        <activity android:name=".ui.chat.NotificacionesActivity"
+            android:exported="true" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

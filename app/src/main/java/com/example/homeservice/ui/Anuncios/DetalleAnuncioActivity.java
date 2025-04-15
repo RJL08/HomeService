@@ -1,8 +1,11 @@
 package com.example.homeservice.ui.Anuncios;
 
+import android.content.Intent;
 import android.os.Bundle;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -12,8 +15,11 @@ import com.bumptech.glide.Glide;
 import com.example.homeservice.R;
 
 
+import com.example.homeservice.database.FirestoreHelper;
 import com.example.homeservice.model.Anuncio;
 import com.example.homeservice.adapter.ImagenesAdapter;
+import com.example.homeservice.ui.chat.ChatActivity;
+import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.ArrayList;
 
@@ -65,5 +71,29 @@ public class DetalleAnuncioActivity extends AppCompatActivity {
             ImagenesAdapter adapter = new ImagenesAdapter(urls);
             viewPager.setAdapter(adapter);
         }
+
+        // Después de cargar los datos del anuncio en DetalleAnuncioActivity:
+        Button btnAccion = findViewById(R.id.btnAccion);
+        btnAccion.setText("CHAT");
+        btnAccion.setOnClickListener(v -> {
+            // Obtén el publicador del anuncio:
+            String publisherId = anuncio.getUserId();
+            String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+
+            FirestoreHelper firestoreHelper = new FirestoreHelper();
+            firestoreHelper.obtenerOcrearConversacion(currentUserId, publisherId,
+                    conversationId -> {
+                        Intent intent = new Intent(DetalleAnuncioActivity.this, ChatActivity.class);
+                        intent.putExtra("conversationId", conversationId);
+                        startActivity(intent);
+                    },
+                    error -> {
+                        Toast.makeText(DetalleAnuncioActivity.this, "Error al iniciar el chat: " + error.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+            );
+        });
     }
+
+
+
 }

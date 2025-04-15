@@ -16,6 +16,7 @@ import androidx.navigation.ui.NavigationUI;
 import androidx.drawerlayout.widget.DrawerLayout;
 import com.example.homeservice.databinding.ActivityMainBinding;
 import com.example.homeservice.ui.Publicar.PublicarAnuncio;
+import com.example.homeservice.ui.chat.NotificacionesActivity;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.material.navigation.NavigationView;
@@ -102,6 +103,12 @@ public class MainActivity extends AppCompatActivity {
             if (id == R.id.nav_logout) {
                 // Cerrar sesión
                 realizarLogout();
+                drawer.closeDrawers();
+                return true;
+            }
+
+            if (id == R.id.nav_notify) {
+                startActivity(new Intent(MainActivity.this, NotificacionesActivity.class));
                 drawer.closeDrawers();
                 return true;
             }

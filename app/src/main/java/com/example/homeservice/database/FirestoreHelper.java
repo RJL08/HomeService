@@ -13,7 +13,10 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.firestore.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Clase helper para manejar las operaciones en Firestore
@@ -27,8 +30,13 @@ public class FirestoreHelper {
 
     private final FirebaseFirestore db;
 
+
     public FirestoreHelper() {
         db = FirebaseFirestore.getInstance();
+    }
+
+    public FirebaseFirestore getDb() {
+        return db;
     }
 
     /**
@@ -165,4 +173,30 @@ public class FirestoreHelper {
                     onFailure.onFailure(e);
                 });
     }
+
+    public void obtenerOcrearConversacion(String userId1, String userId2,
+                                          OnSuccessListener<String> onSuccess,
+                                          OnFailureListener onFailure) {
+        // Genera un ID único ordenado (por ejemplo, concatenando los IDs ordenadamente)
+        String conversationId = userId1.compareTo(userId2) < 0 ? userId1 + "_" + userId2 : userId2 + "_" + userId1;
+
+        db.collection("conversaciones").document(conversationId)
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        onSuccess.onSuccess(conversationId);
+                    } else {
+                        // Si no existe la conversación, créala.
+                        Map<String, Object> datos = new HashMap<>();
+                        datos.put("participants", Arrays.asList(userId1, userId2));
+                        datos.put("timestamp", FieldValue.serverTimestamp());
+                        db.collection("conversaciones").document(conversationId)
+                                .set(datos)
+                                .addOnSuccessListener(aVoid -> onSuccess.onSuccess(conversationId))
+                                .addOnFailureListener(onFailure);
+                    }
+                })
+                .addOnFailureListener(onFailure);
+    }
+
 }
