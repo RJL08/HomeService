@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -16,6 +17,7 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.homeservice.R;
 import com.example.homeservice.adapter.OnAnuncioClickListener;
 import com.example.homeservice.database.FirestoreHelper;
 import com.example.homeservice.databinding.FragmentHomeBinding;
@@ -34,6 +36,7 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
     private RecyclerView recyclerView;
     private AnuncioAdapter adapter;
     private List<Anuncio> listaAnuncios;
+    private Button btnCategorias;
 
 
     @Override
@@ -50,6 +53,15 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
         listaAnuncios = new ArrayList<>();
         adapter = new AnuncioAdapter(listaAnuncios, this);
         recyclerView.setAdapter(adapter);
+
+        // Usa la vista raíz 'root' o binding para buscar el botón:
+        btnCategorias = root.findViewById(R.id.btnCategorias);
+        btnCategorias.setOnClickListener(v -> {
+            // Usa getContext() o requireContext() para obtener el Context:
+            Intent intent = new Intent(requireContext(), CategoriasActivity.class);
+            startActivity(intent);
+        });
+
 
         cargarAnuncios();
 
