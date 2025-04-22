@@ -9,15 +9,17 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.homeservice.R;
 import com.example.homeservice.adapter.AnuncioAdapter;
-import com.example.homeservice.adapter.OnAnuncioClickListener;
+import com.example.homeservice.interfaz.OnAnuncioClickListener;
 import com.example.homeservice.database.FirestoreHelper;
+import com.example.homeservice.interfaz.OnFavoriteToggleListener;
 import com.example.homeservice.model.Anuncio;
 import com.example.homeservice.ui.Anuncios.DetalleAnuncioActivity;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.Query;
 import java.util.ArrayList;
 import java.util.List;
 
-public class FilteredAnunciosActivity extends AppCompatActivity implements OnAnuncioClickListener {
+public class FilteredAnunciosActivity extends AppCompatActivity implements OnAnuncioClickListener, OnFavoriteToggleListener {
 
     private RecyclerView recyclerView;
     private AnuncioAdapter adapter;
@@ -32,7 +34,7 @@ public class FilteredAnunciosActivity extends AppCompatActivity implements OnAnu
         recyclerView = findViewById(R.id.recyclerViewFilteredAnuncios);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-        adapter = new AnuncioAdapter(listaAnuncios, this);
+        adapter = new AnuncioAdapter(listaAnuncios, this,this);
 
         recyclerView.setAdapter(adapter);
 
@@ -74,6 +76,35 @@ public class FilteredAnunciosActivity extends AppCompatActivity implements OnAnu
         Intent intent = new Intent(this, DetalleAnuncioActivity.class);
         intent.putExtra("anuncio", anuncio);
         startActivity(intent);
+    }
+
+    // --------------------------------------------------------
+    // OnFavoriteToggleListener: añade/quita favoritos en Firestore
+    // --------------------------------------------------------
+    @Override
+    public void onFavoriteAdded(Anuncio anuncio) {
+        String userId    = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        String anuncioId = anuncio.getId();  // Asegúrate de que Anuncio tenga getId()
+        new FirestoreHelper().agregarAFavoritos(userId, anuncioId,
+                aVoid -> Toast.makeText(this, "Añadido a favoritos", Toast.LENGTH_SHORT).show(),
+                e     -> Toast.makeText(this,
+                        "Error al agregar a favoritos: " + e.getMessage(),
+                        Toast.LENGTH_SHORT
+                ).show()
+        );
+    }
+
+    @Override
+    public void onFavoriteRemoved(Anuncio anuncio) {
+        String userId    = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        String anuncioId = anuncio.getId();
+        new FirestoreHelper().eliminarDeFavoritos(userId, anuncioId,
+                aVoid -> Toast.makeText(this, "Eliminado de favoritos", Toast.LENGTH_SHORT).show(),
+                e     -> Toast.makeText(this,
+                        "Error al eliminar de favoritos: " + e.getMessage(),
+                        Toast.LENGTH_SHORT
+                ).show()
+        );
     }
 
 }

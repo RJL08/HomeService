@@ -27,7 +27,7 @@ public class FirestoreHelper {
     private static final String TAG = "FirestoreHelper";
     private static final String COLECCION_USUARIOS = "usuarios";
     private static final String COLECCION_ANUNCIOS = "anuncios";
-
+    private static final String COLECCION_FAVORITOS = "favoritos";
     private final FirebaseFirestore db;
 
 
@@ -130,7 +130,8 @@ public class FirestoreHelper {
 
                     List<Anuncio> lista = new ArrayList<>();
                     for (QueryDocumentSnapshot doc : value) {
-                        Anuncio anuncio = doc.toObject(Anuncio.class);  // <- conversión correcta
+                        Anuncio anuncio = doc.toObject(Anuncio.class);
+                        anuncio.setId(doc.getId());// <- conversión correcta
                         lista.add(anuncio);
                     }
                     listener.onAnunciosCargados(lista);
@@ -199,4 +200,69 @@ public class FirestoreHelper {
                 .addOnFailureListener(onFailure);
     }
 
+    /**
+     * Agrega un anuncio a favoritos.
+     * Se crea un documento en la colección "favoritos" con el userId y anuncioId.
+     */
+    public void agregarAFavoritos(String userId, String anuncioId,
+                                  OnSuccessListener<Void> onSuccess,
+                                  OnFailureListener onFailure) {
+        // Creamos un mapa con los datos
+        Map<String, Object> datos = new HashMap<>();
+        datos.put("userId", userId);
+        datos.put("anuncioId", anuncioId);
+        datos.put("timestamp", FieldValue.serverTimestamp());
+
+        // Usamos como id, por ejemplo, la concatenación de userId y anuncioId, o Firestore podrá generarlo.
+        String favoriteDocId = userId + "_" + anuncioId;
+        db.collection(COLECCION_FAVORITOS)
+                .document(favoriteDocId)
+                .set(datos)
+                .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "Favorito agregado: " + favoriteDocId);
+                    onSuccess.onSuccess(aVoid);
+                })
+                .addOnFailureListener(onFailure);
+    }
+
+    /**
+     * Elimina un anuncio de favoritos.
+     */
+    public void eliminarDeFavoritos(String userId, String anuncioId,
+                                    OnSuccessListener<Void> onSuccess,
+                                    OnFailureListener onFailure) {
+        String favoriteDocId = userId + "_" + anuncioId;
+        db.collection(COLECCION_FAVORITOS)
+                .document(favoriteDocId)
+                .delete()
+                .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "Favorito eliminado: " + favoriteDocId);
+                    onSuccess.onSuccess(aVoid);
+                })
+                .addOnFailureListener(onFailure);
+    }
+
+    /**
+     * Obtiene la lista de favoritos para un usuario.
+     */
+    public void leerFavoritosDeUsuario(String userId,
+                                       OnSuccessListener<List<String>> onSuccess,
+                                       OnFailureListener onFailure) {
+        db.collection(COLECCION_FAVORITOS)
+                .whereEqualTo("userId", userId)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    List<String> listaAnuncioIds = new ArrayList<>();
+                    for (DocumentSnapshot doc : querySnapshot) {
+                        String anuncioId = doc.getString("anuncioId");
+                        if (anuncioId != null) {
+                            listaAnuncioIds.add(anuncioId);
+                        }
+                    }
+                    onSuccess.onSuccess(listaAnuncioIds);
+                })
+                .addOnFailureListener(onFailure);
+    }
 }
+
+

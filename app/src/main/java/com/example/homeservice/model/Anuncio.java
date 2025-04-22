@@ -11,6 +11,7 @@ import java.util.List;
 
 public class Anuncio implements Serializable {
 
+    private String id;
     private String titulo;          // Título del anuncio
     private String descripcion;     // Descripción detallada
     private String oficio;          // Tipo de servicio: "Pintor", "Electricista", etc.
@@ -20,6 +21,8 @@ public class Anuncio implements Serializable {
     private double latitud;         // Latitud para la ubicación exacta
     private double longitud;        // Longitud para la ubicación exacta
     private ArrayList<String> listaImagenes = new ArrayList<>();
+    private boolean favorite = false;
+
 
     /**
      * Constructor vacío para Firestore (des-serialización).
@@ -39,12 +42,26 @@ public class Anuncio implements Serializable {
         this.localizacion = ciudad;
         this.userId = uid;
         this.fechaPublicacion = fechaPublicacion;
-        this.latitud = latitud;  // Si no las estás usando todavía
-        this.longitud = longitud;
         this.listaImagenes = new ArrayList<>();
+        this.favorite = false;
     }
 
     // Getters y setters
+
+    public String getId() {
+        return id;
+    }
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public boolean isFavorite() {
+        return favorite;
+    }
+
+    public void setFavorite(boolean favorite) {
+        this.favorite = favorite;
+    }
 
     public ArrayList<String> getListaImagenes() {
         return listaImagenes;
