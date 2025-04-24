@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <!-- Campo para el título del anuncio -->
+    <EditText
+        android:id="@+id/etTitulo"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:hint="Título del anuncio"
+        android:inputType="textCapWords"
+        android:maxLength="50"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- Dropdown de categorías -->
+    <AutoCompleteTextView
+        android:id="@+id/dropdownCategoria"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:hint="Categoría"
+        android:inputType="none"
+        android:drawableEnd="@drawable/ic_keyboard_arrow_down"
+        app:layout_constraintTop_toBottomOf="@id/etTitulo"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp"/>
+
+    <!-- Campo para la ciudad/localización -->
+    <!-- Campo de solo lectura para mostrar la ubicación -->
+    <TextView
+        android:id="@+id/tvUbicacion"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Ubicación"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        app:layout_constraintTop_toBottomOf="@id/dropdownCategoria"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp"
+        android:padding="8dp"
+        android:background="@drawable/border_background"/>
+
+
+    <!-- Contenedor de imágenes + botón agregar -->
+    <HorizontalScrollView
+        android:id="@+id/scrollImagenes"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:fillViewport="true"
+        android:scrollbars="none"
+        app:layout_constraintTop_toBottomOf="@id/tvUbicacion"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:id="@+id/contenedorImagenes"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <!-- Aquí se agregarán dinámicamente hasta 5 imágenes -->
+
+            <!-- Botón "+" fijo al final -->
+            <ImageView
+                android:id="@+id/btnAgregarImagen"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:layout_margin="8dp"
+                android:background="@drawable/border_background"
+                android:src="@drawable/ic_add"
+                android:scaleType="center"
+                android:contentDescription="Agregar imagen"/>
+
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <!-- Campo grande para la descripción -->
+    <EditText
+        android:id="@+id/etDescripcion"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:hint="Escribe la descripción del anuncio..."
+        android:gravity="top"
+        android:inputType="textMultiLine"
+        android:minLines="5"
+        app:layout_constraintTop_toBottomOf="@id/scrollImagenes"
+        app:layout_constraintBottom_toTopOf="@id/btnPublicar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"/>
+
+    <!-- Botón para publicar -->
+    <Button
+        android:id="@+id/btnPublicar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Publicar"
+        android:textAllCaps="false"
+        android:backgroundTint="@color/teal_700"
+        android:textColor="@android:color/white"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

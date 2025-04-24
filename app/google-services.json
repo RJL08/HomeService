@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "159651159675",
+    "project_id": "homeserviceapp-b9169",
+    "storage_bucket": "homeserviceapp-b9169.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:159651159675:android:98566328f5a53460a48cde",
+        "android_client_info": {
+          "package_name": "com.example.homeservice"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "159651159675-qkttgso9i3aka410f43tll12ugt1kmq5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.homeservice",
+            "certificate_hash": "d585009375491ce7020b2d2980388e8335728934"
+          }
+        },
+        {
+          "client_id": "159651159675-rj4o43fpsj2ih1notirl9khasdsc4iu6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD14TBz8yApppcpSR-0umOBjttKc5sRMr8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "159651159675-rj4o43fpsj2ih1notirl9khasdsc4iu6.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

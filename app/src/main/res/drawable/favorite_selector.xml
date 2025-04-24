@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Estado presionado (cuando se hace clic y se mantiene) -->
+    <item
+        android:state_pressed="true"
+        android:drawable="@drawable/favorite" />
+
+    <!-- Estado seleccionado (cuando está marcado como favorito) -->
+    <item
+        android:state_selected="true"
+        android:drawable="@drawable/favoritos" />
+
+    <!-- Estado por defecto (corazón vacío) -->
+    <item
+        android:drawable="@drawable/favorite" />
+</selector>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Opción A: permitir escribir en la carpeta "Pictures" de tu almacenamiento privado -->
+    <external-files-path
+        name="my_images"
+        path="Pictures" />
+
+    <!-- Opción B (opcional): o usar el cache interno en 'getCacheDir()' -->
+    <!-- <cache-path
+         name="camera_cache"
+         path="." /> -->
+</paths>
