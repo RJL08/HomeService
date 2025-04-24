@@ -94,4 +94,6 @@ public class ChatActivity extends AppCompatActivity {
                 .addOnSuccessListener(documentReference -> etMensaje.setText(""))
                 .addOnFailureListener(e -> Toast.makeText(this, "Error enviando mensaje", Toast.LENGTH_SHORT).show());
     }
+
+
 }

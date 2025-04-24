@@ -8,6 +8,7 @@ import android.util.Log;
 
 import com.example.homeservice.model.Anuncio;
 import com.example.homeservice.model.Usuario;
+import com.example.homeservice.utils.KeystoreManager;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.firestore.*;
@@ -29,10 +30,18 @@ public class FirestoreHelper {
     private static final String COLECCION_ANUNCIOS = "anuncios";
     private static final String COLECCION_FAVORITOS = "favoritos";
     private final FirebaseFirestore db;
-
+    private final KeystoreManager keystore;
 
     public FirestoreHelper() {
         db = FirebaseFirestore.getInstance();
+        KeystoreManager tmp = null;
+        try {
+            tmp = new KeystoreManager();
+        } catch (Exception e) {
+            Log.e(TAG, "No se pudo inicializar KeystoreManager, seguiré sin cifrado", e);
+            // tmp queda nulo, tus métodos de cifrado deberán comprobarlo antes de usar
+        }
+        keystore = tmp;
     }
 
     public FirebaseFirestore getDb() {
@@ -89,7 +98,110 @@ public class FirestoreHelper {
                 });
     }
 
+/***********************************CIFRDO*******************************/
 
+    /**
+     * Guarda un Usuario cifrando los campos sensibles si keystore != null,
+     * o en claro si falla la inicialización.
+     */
+    public void guardarUsuarioCifrado(String userId,
+                                      Usuario u,
+                                      OnSuccessListener<Void> onSuccess,
+                                      OnFailureListener onFailure) {
+        Map<String,Object> datos = new HashMap<>();
+
+        if (keystore != null) {
+            try {
+                datos.put("nombre",       keystore.encryptData(u.getNombre()));
+                datos.put("apellidos",    keystore.encryptData(u.getApellidos()));
+                datos.put("correo",       keystore.encryptData(u.getCorreo()));
+                datos.put("localizacion", keystore.encryptData(u.getLocalizacion()));
+                datos.put("fotoPerfil",   keystore.encryptData(u.getFotoPerfil()));
+                // lat/lon cifrados:
+                datos.put("lat",  keystore.encryptData(Double.toString(u.getLat())));
+                datos.put("lon",  keystore.encryptData(Double.toString(u.getLon())));
+            } catch (Exception e) {
+                Log.w(TAG, "Error cifrando campos, guardo todos en claro", e);
+                datos.clear();
+                datos.put("nombre",       u.getNombre());
+                datos.put("apellidos",    u.getApellidos());
+                datos.put("correo",       u.getCorreo());
+                datos.put("localizacion", u.getLocalizacion());
+                datos.put("fotoPerfil",   u.getFotoPerfil());
+                datos.put("lat",          u.getLat());
+                datos.put("lon",          u.getLon());
+            }
+        } else {
+            // Keystore no disponible -> todo en claro
+            datos.put("nombre",       u.getNombre());
+            datos.put("apellidos",    u.getApellidos());
+            datos.put("correo",       u.getCorreo());
+            datos.put("localizacion", u.getLocalizacion());
+            datos.put("fotoPerfil",   u.getFotoPerfil());
+            datos.put("lat",          u.getLat());
+            datos.put("lon",          u.getLon());
+        }
+
+        db.collection(COLECCION_USUARIOS)
+                .document(userId)
+                .set(datos)
+                .addOnSuccessListener(onSuccess)
+                .addOnFailureListener(onFailure);
+    }
+
+    public void leerUsuarioDescifrado(String userId,
+                                      OnSuccessListener<Usuario> onComplete,
+                                      OnFailureListener onFailure) {
+        db.collection(COLECCION_USUARIOS)
+                .document(userId)
+                .get()
+                .addOnSuccessListener(doc -> {
+                    if (!doc.exists()) {
+                        onComplete.onSuccess(null);
+                        return;
+                    }
+                    Usuario u = new Usuario();
+                    u.setId(userId);
+
+                    if (keystore != null) {
+                        try {
+                            u.setNombre(       keystore.decryptData(doc.getString("nombre")));
+                            u.setApellidos(    keystore.decryptData(doc.getString("apellidos")));
+                            u.setCorreo(       keystore.decryptData(doc.getString("correo")));
+                            u.setLocalizacion( keystore.decryptData(doc.getString("localizacion")));
+                            u.setFotoPerfil(   keystore.decryptData(doc.getString("fotoPerfil")));
+                            // lat/lon descifrados:
+                            String latStr = keystore.decryptData(doc.getString("lat"));
+                            String lonStr = keystore.decryptData(doc.getString("lon"));
+                            u.setLat(Double.parseDouble(latStr));
+                            u.setLon(Double.parseDouble(lonStr));
+                        } catch (Exception e) {
+                            Log.w(TAG, "Error descifrando campos, uso valores en claro", e);
+                            u.setNombre(       doc.getString("nombre"));
+                            u.setApellidos(    doc.getString("apellidos"));
+                            u.setCorreo(       doc.getString("correo"));
+                            u.setLocalizacion( doc.getString("localizacion"));
+                            u.setFotoPerfil(   doc.getString("fotoPerfil"));
+                            u.setLat(          doc.getDouble("lat"));
+                            u.setLon(          doc.getDouble("lon"));
+                        }
+                    } else {
+                        // Keystore no disponible: todo en claro
+                        u.setNombre(       doc.getString("nombre"));
+                        u.setApellidos(    doc.getString("apellidos"));
+                        u.setCorreo(       doc.getString("correo"));
+                        u.setLocalizacion( doc.getString("localizacion"));
+                        u.setFotoPerfil(   doc.getString("fotoPerfil"));
+                        u.setLat(          doc.getDouble("lat"));
+                        u.setLon(          doc.getDouble("lon"));
+                    }
+
+                    onComplete.onSuccess(u);
+                })
+                .addOnFailureListener(onFailure);
+    }
+
+    /******************************************************************/
 
     /**
      * Crear un anuncio en la colección "anuncios" (ID auto-generado).

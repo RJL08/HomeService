@@ -127,7 +127,7 @@ public class Login extends AppCompatActivity {
 
                         // 3) Leer datos desde Firestore
                         FirestoreHelper firestoreHelper = new FirestoreHelper();
-                        firestoreHelper.leerUsuario(
+                        firestoreHelper.leerUsuarioDescifrado(
                                 userId,
                                 usuarioExistente -> {
                                     if (usuarioExistente != null) {
@@ -153,7 +153,7 @@ public class Login extends AppCompatActivity {
                                                 null,
                                                 null
                                         );
-                                        firestoreHelper.guardarUsuario(
+                                        firestoreHelper.guardarUsuarioCifrado(
                                                 userId,
                                                 nuevoUsuario,
                                                 aVoid -> Log.d("Login", "Usuario creado por defecto en Firestore."),
@@ -258,7 +258,7 @@ public class Login extends AppCompatActivity {
                         // Guardar en Firestore sin ciudad
                         FirestoreHelper firestoreHelper = new FirestoreHelper();
                         Usuario usuario = new Usuario(userId, nombre, apellidos, correo, "", foto, null, null);
-                        firestoreHelper.guardarUsuario(
+                        firestoreHelper.guardarUsuarioCifrado(
                                 userId,
                                 usuario,
                                 aVoid -> Log.d("Login", "Usuario sin ciudad guardado (Google)"),
@@ -331,7 +331,7 @@ public class Login extends AppCompatActivity {
                             FirestoreHelper firestoreHelper = new FirestoreHelper();
                             String finalCiudad = ciudad;
 
-                            firestoreHelper.leerUsuario(
+                            firestoreHelper.leerUsuarioDescifrado(
                                     userId,
                                     usuarioLeido -> {
                                         if (usuarioLeido != null) {
@@ -341,7 +341,7 @@ public class Login extends AppCompatActivity {
                                             usuarioLeido.setLocalizacion(finalCiudad);
 
                                             // 3) Guardar
-                                            firestoreHelper.guardarUsuario(
+                                            firestoreHelper.guardarUsuarioCifrado(
                                                     userId,
                                                     usuarioLeido,
                                                     aVoid -> Log.d("Login", "Localización actualizada: " + finalCiudad + " lat=" + lat + " lon=" + lon),
@@ -389,7 +389,7 @@ public class Login extends AppCompatActivity {
                                         String userId = user.getUid();
                                         FirestoreHelper firestoreHelper = new FirestoreHelper();
 
-                                        firestoreHelper.leerUsuario(
+                                        firestoreHelper.leerUsuarioDescifrado(
                                                 userId,
                                                 usuarioLeido -> {
                                                     if (usuarioLeido != null) {
@@ -399,7 +399,7 @@ public class Login extends AppCompatActivity {
                                                         usuarioLeido.setLat(lat);
                                                         usuarioLeido.setLon(lon);
 
-                                                        firestoreHelper.guardarUsuario(
+                                                        firestoreHelper.guardarUsuarioCifrado(
                                                                 userId,
                                                                 usuarioLeido,
                                                                 aVoid -> {

@@ -171,7 +171,7 @@ public class PublicarAnuncio extends AppCompatActivity {
         }
         String userId = user.getUid();
         FirestoreHelper firestoreHelper = new FirestoreHelper();
-        firestoreHelper.leerUsuario(
+        firestoreHelper.leerUsuarioDescifrado(
                 userId,
                 usuarioLeido -> {
                     if (usuarioLeido != null) {

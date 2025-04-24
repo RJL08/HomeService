@@ -19,6 +19,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
+import com.example.homeservice.database.FirestoreHelper;
 import com.example.homeservice.model.Usuario;
 import com.example.homeservice.utils.LocationHelper;
 import com.example.homeservice.utils.LocationIQHelper;
@@ -195,31 +196,56 @@ public class Registro extends AppCompatActivity {
                 LocationIQHelper.reverseGeocode(lat, lon,
                         cityName -> {
                             Log.d("RegistroDebug", "LocationIQ => " + cityName);
-                            // 1) Guardar la ciudad
-                            actualizarSoloCiudad(userIdCreado, cityName);
 
-                            // 2) Guardar lat/lon
-                            firestore.collection("usuarios")
-                                    .document(userIdCreado)
-                                    .update("lat", lat, "lon", lon)
-                                    .addOnSuccessListener(aVoid -> {
-                                        Log.d("RegistroDebug", "Lat/Lon guardados en Firestore (permiso YA concedido)");
-                                    })
-                                    .addOnFailureListener(e -> {
-                                        Log.e("RegistroDebug", "Error guardando lat/lon: " + e.getMessage());
-                                    });
+                            // ———> AÑADE ESTA LLAMADA AL PRINCIPIO:
+                            actualizarSoloCiudad(userIdCreado, cityName);
+                            // ———<
+
+                            // Ahora usamos tu helper para leer, modificar y guardar cifrado
+                            FirestoreHelper helper = new FirestoreHelper();
+                            helper.leerUsuarioDescifrado(
+                                    userIdCreado,
+                                    usuario -> {
+                                        if (usuario != null) {
+                                            // 1) Actualiza los campos en el objeto
+                                            usuario.setLocalizacion(cityName);
+                                            usuario.setLat(lat);
+                                            usuario.setLon(lon);
+                                            // 2) Guarda TODO cifrado de nuevo
+                                            helper.guardarUsuarioCifrado(
+                                                    userIdCreado,
+                                                    usuario,
+                                                    aVoid -> Log.d("RegistroDebug", "Localización y coords guardados cifrados"),
+                                                    e -> Log.e("RegistroDebug", "Error guardando cifrado: " + e.getMessage())
+                                            );
+                                        } else {
+                                            Log.w("RegistroDebug", "Usuario no existe al actualizar localización");
+                                        }
+                                    },
+                                    error -> Log.e("RegistroDebug", "Error leyendo usuario para cifrar: " + error.getMessage())
+                            );
                         },
                         error -> {
                             Log.e("RegistroDebug", "Error locationIQ => " + error.getMessage());
-                            // Si falla, asigna "Desconocido" pero igual guarda lat/lon
-                            actualizarSoloCiudad(userIdCreado, "Desconocido");
-
-                            firestore.collection("usuarios")
-                                    .document(userIdCreado)
-                                    .update("lat", lat, "lon", lon)
-                                    .addOnSuccessListener(aVoid -> {
-                                        Log.d("RegistroDebug", "Lat/Lon guardados, city=Desconocido (permiso YA)");
-                                    });
+                            // Si falla, asigna "Desconocido" igual que antes
+                            FirestoreHelper helper = new FirestoreHelper();
+                            helper.leerUsuarioDescifrado(
+                                    userIdCreado,
+                                    usuario -> {
+                                        if (usuario != null) {
+                                            usuario.setLocalizacion("Desconocido");
+                                            usuario.setLat(lat);
+                                            usuario.setLon(lon);
+                                            helper.guardarUsuarioCifrado(
+                                                    userIdCreado,
+                                                    usuario,
+                                                    aVoid -> Log.d("RegistroDebug", "Coords guardados, city=Desconocido (cifrado)"),
+                                                    e -> Log.e("RegistroDebug", "Error guardando coords cifrados: " + e.getMessage())
+                                            );
+                                        }
+                                    },
+                                    err -> Log.e("RegistroDebug", "Error leyendo usuario al fallar LocationIQ: " + err.getMessage())
+                            );
                         }
                 );
 
@@ -230,6 +256,7 @@ public class Registro extends AppCompatActivity {
             Log.e("RegistroDebug", "getLastLocation => onFailure: " + e.getMessage());
         });
     }
+
 
     /**
      * onRequestPermissionsResult => si se concede => actualizamos
@@ -289,22 +316,48 @@ public class Registro extends AppCompatActivity {
     private void actualizarSoloCiudad(String userId, String ciudad) {
         Log.d("RegistroDebug", "actualizarSoloCiudad -> userId=" + userId + ", ciudad=" + ciudad);
 
-        FirebaseFirestore.getInstance()
-                .collection("usuarios")
-                .document(userId)
-                .update("localizacion", ciudad)
-                .addOnSuccessListener(aVoid -> {
-                    Log.d("RegistroDebug", "Ciudad actualizada con éxito a " + ciudad);
-                    Toast.makeText(Registro.this, "Ciudad actualizada a " + ciudad, Toast.LENGTH_SHORT).show();
-                    // Ir a Main si quieres
-                    startActivity(new Intent(this, MainActivity.class));
-                    finish();
-                })
-                .addOnFailureListener(e -> {
-                    Log.e("RegistroDebug", "Error al actualizar ciudad: " + e.getMessage());
-                    Toast.makeText(Registro.this, "Error al actualizar ciudad: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+        FirestoreHelper helper = new FirestoreHelper();
+        // Primero leemos el usuario (descifrado)
+        helper.leerUsuarioDescifrado(
+                userId,
+                usuario -> {
+                    if (usuario != null) {
+                        // Actualizamos en el objeto
+                        usuario.setLocalizacion(ciudad);
+                        // Y guardamos todo cifrado de nuevo
+                        helper.guardarUsuarioCifrado(
+                                userId,
+                                usuario,
+                                aVoid -> {
+                                    Log.d("RegistroDebug", "Ciudad actualizada con éxito a " + ciudad);
+                                    Toast.makeText(Registro.this,
+                                            "Ciudad actualizada a " + ciudad,
+                                            Toast.LENGTH_SHORT).show();
+                                    // Ir a Main si quieres
+                                    startActivity(new Intent(this, MainActivity.class));
+                                    finish();
+                                },
+                                e -> {
+                                    Log.e("RegistroDebug", "Error al actualizar ciudad: " + e.getMessage());
+                                    Toast.makeText(Registro.this,
+                                            "Error al actualizar ciudad: " + e.getMessage(),
+                                            Toast.LENGTH_SHORT).show();
+                                }
+                        );
+                    } else {
+                        // Si por alguna razón no existe el usuario
+                        Log.w("RegistroDebug", "Usuario no encontrado para actualizar ciudad");
+                    }
+                },
+                e -> {
+                    Log.e("RegistroDebug", "Error leyendo usuario para actualizar ciudad: " + e.getMessage());
+                    Toast.makeText(Registro.this,
+                            "No se pudo leer usuario: " + e.getMessage(),
+                            Toast.LENGTH_SHORT).show();
+                }
+        );
     }
+
 
     /**
      * Guardar datos básicos con ciudad vacía
@@ -317,16 +370,18 @@ public class Registro extends AppCompatActivity {
                 userId, nombre, apellidos, correo, ciudad, fotoPerfil, null, null
         );
 
-        FirebaseFirestore.getInstance().collection("usuarios")
-                .document(userId)
-                .set(usuario)
-                .addOnSuccessListener(aVoid -> {
+        // ← Sustituimos la llamada directa a Firestore por la versión cifrada:
+        FirestoreHelper helper = new FirestoreHelper();
+        helper.guardarUsuarioCifrado(
+                userId,
+                usuario,
+                aVoid -> {
                     Toast.makeText(Registro.this, "Datos guardados correctamente", Toast.LENGTH_SHORT).show();
 
                     // (A) Guardar en SharedPreferences para que MainActivity pueda leerlos
                     guardarDatosEnPrefs(
-                            nombre, // userName
-                            correo, // userEmail
+                            nombre,    // userName
+                            correo,    // userEmail
                             fotoPerfil // userPhoto (ahora "default")
                     );
 
@@ -336,8 +391,8 @@ public class Registro extends AppCompatActivity {
                         startActivity(new Intent(this, MainActivity.class));
                         finish();
                     }
-                })
-                .addOnFailureListener(e -> {
+                },
+                e -> {
                     Toast.makeText(Registro.this, "Error al guardar datos: " + e.getMessage(), Toast.LENGTH_SHORT).show();
 
                     if (!registroCompleto) {
@@ -345,7 +400,10 @@ public class Registro extends AppCompatActivity {
                         startActivity(new Intent(this, MainActivity.class));
                         finish();
                     }
-                });
+                }
+        );
+
+        // ——— fin de sustitución ———
     }
 
 
