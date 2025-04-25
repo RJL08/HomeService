@@ -1,6 +1,8 @@
 package com.example.homeservice.ui.chat;
 
 import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 import androidx.annotation.Nullable;
@@ -11,9 +13,11 @@ import com.example.homeservice.R;
 import com.example.homeservice.adapter.NotificacionesAdapter;
 import com.example.homeservice.database.FirestoreHelper;
 import com.example.homeservice.model.Conversation;
+import com.example.homeservice.utils.KeystoreManager;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,14 +28,22 @@ public class NotificacionesActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private NotificacionesAdapter adapter;
     private final List<Conversation> conversationList = new ArrayList<>();
+    private KeystoreManager keystore;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_notificaciones);
 
+        try {
+            keystore = new KeystoreManager();
+        } catch (Exception e) {
+            keystore = null;
+            Log.w("Notificaciones", "Keystore no disponible", e);
+        }
+
         recyclerView = findViewById(R.id.recyclerViewNotificaciones);
-        progressBar = findViewById(R.id.progressBarNotificaciones);
+        progressBar  = findViewById(R.id.progressBarNotificaciones);
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         adapter = new NotificacionesAdapter(conversationList, this);
@@ -48,11 +60,12 @@ public class NotificacionesActivity extends AppCompatActivity {
         }
         String currentUserId = user.getUid();
 
-        new FirestoreHelper().getDb().collection("conversaciones")
+        FirebaseFirestore.getInstance()
+                .collection("conversaciones")
                 .whereArrayContains("participants", currentUserId)
                 .orderBy("timestamp", Query.Direction.DESCENDING)
                 .addSnapshotListener((querySnapshot, error) -> {
-                    progressBar.setVisibility(ProgressBar.GONE);
+                    progressBar.setVisibility(View.GONE);
                     if (error != null) {
                         Toast.makeText(this, "Error al cargar conversaciones", Toast.LENGTH_SHORT).show();
                         return;
@@ -61,10 +74,20 @@ public class NotificacionesActivity extends AppCompatActivity {
                     if (querySnapshot != null) {
                         for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
                             Conversation conv = doc.toObject(Conversation.class);
-                            if (conv != null) {
-                                conv.setId(doc.getId());
-                                conversationList.add(conv);
+                            if (conv == null) continue;
+                            conv.setId(doc.getId());
+
+                            // ── DESCIFRAR preview del último mensaje ──
+                            if (keystore != null && conv.getLastMessage() != null) {
+                                try {
+                                    String plain = keystore.decryptData(conv.getLastMessage());
+                                    conv.setLastMessage(plain);
+                                } catch (Exception e) {
+                                    Log.w("Notificaciones", "No se pudo descifrar lastMessage", e);
+                                }
                             }
+
+                            conversationList.add(conv);
                         }
                         adapter.notifyDataSetChanged();
                     }

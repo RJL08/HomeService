@@ -389,7 +389,7 @@ public class PublicarAnuncio extends AppCompatActivity {
 
     private void guardarAnuncioEnFirestore(Anuncio anuncio) {
         FirestoreHelper firestoreHelper = new FirestoreHelper();
-        firestoreHelper.crearAnuncio(
+        firestoreHelper.crearAnuncioCifrado(
                 anuncio,
                 id -> {
                     Toast.makeText(this, "Anuncio publicado con ID: " + id, Toast.LENGTH_SHORT).show();

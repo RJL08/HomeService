@@ -2,6 +2,7 @@ package com.example.homeservice.ui.chat;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -12,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.homeservice.R;
 import com.example.homeservice.adapter.ChatAdapter;
 import com.example.homeservice.model.ChatMessage;
+import com.example.homeservice.utils.KeystoreManager;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.*;
@@ -20,7 +22,6 @@ import java.util.Date;
 import java.util.List;
 
 public class ChatActivity extends AppCompatActivity {
-
     private RecyclerView recyclerView;
     private ChatAdapter adapter;
     private List<ChatMessage> mensajes;
@@ -28,19 +29,28 @@ public class ChatActivity extends AppCompatActivity {
     private Button btnEnviar;
     private String conversationId;
     private FirebaseFirestore db;
+    private KeystoreManager keystore;   // ← agrega esto
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_chat);
 
+        try {
+            keystore = new KeystoreManager();
+        } catch (Exception e) {
+            // si falla el keystore, lo dejamos a null y mostraremos en claro
+            keystore = null;
+            Log.w("ChatActivity", "No se pudo inicializar Keystore", e);
+        }
+
         recyclerView = findViewById(R.id.recyclerViewChat);
-        etMensaje = findViewById(R.id.etMensaje);
-        btnEnviar = findViewById(R.id.btnEnviar);
-        db = FirebaseFirestore.getInstance();
+        etMensaje    = findViewById(R.id.etMensaje);
+        btnEnviar    = findViewById(R.id.btnEnviar);
+        db           = FirebaseFirestore.getInstance();
 
         mensajes = new ArrayList<>();
-        adapter = new ChatAdapter(mensajes);
+        adapter  = new ChatAdapter(mensajes);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(adapter);
 
@@ -57,7 +67,8 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     private void cargarMensajes() {
-        db.collection("conversaciones").document(conversationId)
+        db.collection("conversaciones")
+                .document(conversationId)
                 .collection("mensajes")
                 .orderBy("timestamp", Query.Direction.ASCENDING)
                 .addSnapshotListener((value, error) -> {
@@ -69,9 +80,18 @@ public class ChatActivity extends AppCompatActivity {
                     if (value != null) {
                         for (DocumentSnapshot doc : value.getDocuments()) {
                             ChatMessage msg = doc.toObject(ChatMessage.class);
-                            if (msg != null) {
-                                mensajes.add(msg);
+                            if (msg == null) continue;
+
+                            // ── DESCIFRAR el texto si es posible ──
+                            if (keystore != null) {
+                                try {
+                                    String plain = keystore.decryptData(msg.getTexto());
+                                    msg.setTexto(plain);
+                                } catch (Exception e) {
+                                    Log.w("ChatActivity", "No se pudo descifrar mensaje, lo muestro en claro", e);
+                                }
                             }
+                            mensajes.add(msg);
                         }
                         adapter.notifyDataSetChanged();
                         if (!mensajes.isEmpty()) {
@@ -85,15 +105,23 @@ public class ChatActivity extends AppCompatActivity {
         String texto = etMensaje.getText().toString().trim();
         if (texto.isEmpty()) return;
 
-        String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
-        ChatMessage mensaje = new ChatMessage(currentUserId, texto, new Date().getTime());
+        String encrypted = texto;
+        if (keystore != null) {
+            try {
+                encrypted = keystore.encryptData(texto);
+            } catch (Exception e) {
+                Log.w("ChatActivity", "No se pudo cifrar mensaje, se envía en claro", e);
+            }
+        }
 
-        db.collection("conversaciones").document(conversationId)
+        String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        ChatMessage mensaje = new ChatMessage(currentUserId, encrypted, new Date().getTime());
+
+        db.collection("conversaciones")
+                .document(conversationId)
                 .collection("mensajes")
                 .add(mensaje)
-                .addOnSuccessListener(documentReference -> etMensaje.setText(""))
+                .addOnSuccessListener(docRef -> etMensaje.setText(""))
                 .addOnFailureListener(e -> Toast.makeText(this, "Error enviando mensaje", Toast.LENGTH_SHORT).show());
     }
-
-
 }

@@ -3,21 +3,18 @@ package com.example.homeservice.database;
 
 
 import android.util.Log;
-
-
-
 import com.example.homeservice.model.Anuncio;
 import com.example.homeservice.model.Usuario;
 import com.example.homeservice.utils.KeystoreManager;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.firestore.*;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Clase helper para manejar las operaciones en Firestore
@@ -48,57 +45,6 @@ public class FirestoreHelper {
         return db;
     }
 
-    /**
-     * Crear o actualizar un usuario en la colección "usuarios".
-     * @param userId ID del usuario (Firebase Auth)
-     * @param usuario Objeto con los datos de usuario
-     * @param onSuccess callback de éxito
-     * @param onFailure callback de error
-     */
-    public void guardarUsuario(String userId, Usuario usuario,
-                               OnSuccessListener<Void> onSuccess,
-                               OnFailureListener onFailure) {
-        db.collection(COLECCION_USUARIOS)
-                .document(userId)
-                .set(usuario)
-                .addOnSuccessListener(aVoid -> {
-                    Log.d(TAG, "Usuario guardado con ID: " + userId);
-                    onSuccess.onSuccess(aVoid);
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error al guardar usuario: " + e.getMessage());
-                    onFailure.onFailure(e);
-                });
-    }
-
-    /**
-     * Leer datos de un usuario por su ID
-     * @param userId ID del usuario
-     * @param onComplete callback con el objeto Usuario (o null si no existe)
-     * @param onFailure callback de error
-     */
-    public void leerUsuario(String userId,
-                            OnSuccessListener<Usuario> onComplete,
-                            OnFailureListener onFailure) {
-        db.collection(COLECCION_USUARIOS)
-                .document(userId)
-                .get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    if (documentSnapshot.exists()) {
-                        Usuario usuario = documentSnapshot.toObject(Usuario.class);
-                        onComplete.onSuccess(usuario);
-                    } else {
-                        // Si no existe el doc, devolvemos null
-                        onComplete.onSuccess(null);
-                    }
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error al leer usuario: " + e.getMessage());
-                    onFailure.onFailure(e);
-                });
-    }
-
-/***********************************CIFRDO*******************************/
 
     /**
      * Guarda un Usuario cifrando los campos sensibles si keystore != null,
@@ -201,54 +147,6 @@ public class FirestoreHelper {
                 .addOnFailureListener(onFailure);
     }
 
-    /******************************************************************/
-
-    /**
-     * Crear un anuncio en la colección "anuncios" (ID auto-generado).
-     * @param anuncio Objeto Anuncio
-     * @param onSuccess callback con el ID del documento creado
-     * @param onFailure callback de error
-     */
-    public void crearAnuncio(
-            Anuncio anuncio,
-            OnSuccessListener<String> onSuccess,     // de com.google.android.gms.tasks
-            OnFailureListener onFailure             // de com.google.android.gms.tasks
-    ) {
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        db.collection("anuncios")
-                .add(anuncio)
-                .addOnSuccessListener(documentReference -> {
-                    // La parte de “éxito” regresa un DocumentReference
-                    // Convertimos eso a String => docRef.getId()
-                    onSuccess.onSuccess(documentReference.getId());
-                })
-                .addOnFailureListener(onFailure);
-    }
-
-
-    /**
-     * Leer todos los anuncios de la colección "anuncios" y llamar a  onAnunciosCargados con la lista.
-     * @param listener callback con la lista de anuncios cargados (o null si no hay anuncios)
-     * @param errorListener callback de error (opcional)
-     */
-    public void leerAnuncios(OnAnunciosCargadosListener listener, OnErrorListener errorListener) {
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        db.collection("anuncios")
-                .addSnapshotListener((value, error) -> {
-                    if (error != null) {
-                        errorListener.onError(error);  // <- aquí pasa el FirestoreException
-                        return;
-                    }
-
-                    List<Anuncio> lista = new ArrayList<>();
-                    for (QueryDocumentSnapshot doc : value) {
-                        Anuncio anuncio = doc.toObject(Anuncio.class);
-                        anuncio.setId(doc.getId());// <- conversión correcta
-                        lista.add(anuncio);
-                    }
-                    listener.onAnunciosCargados(lista);
-                });
-    }
 
 
     public interface OnAnunciosCargadosListener {
@@ -375,6 +273,114 @@ public class FirestoreHelper {
                 })
                 .addOnFailureListener(onFailure);
     }
+
+    /******************* CIFRADO AL GUARDAR ANUNCIOS***********************/
+    /**
+     * Crea un anuncio cifrando los campos sensibles.
+     */
+    public void crearAnuncioCifrado(
+            Anuncio anuncio,
+            OnSuccessListener<String> onSuccess,
+            OnFailureListener onFailure
+    ) {
+        Map<String,Object> datos = new HashMap<>();
+        try {
+            datos.put("titulo",       keystore.encryptData(anuncio.getTitulo()));
+            datos.put("descripcion",  keystore.encryptData(anuncio.getDescripcion()));
+            datos.put("oficio",       keystore.encryptData(anuncio.getOficio()));
+            datos.put("localizacion", keystore.encryptData(anuncio.getLocalizacion()));
+            datos.put("userId",       anuncio.getUserId());
+            datos.put("fechaPublicacion", anuncio.getFechaPublicacion());
+            // Coordenadas: si quieres cifrarlas, conviértelas a String
+            datos.put("latitud",  keystore.encryptData(String.valueOf(anuncio.getLatitud())));
+            datos.put("longitud", keystore.encryptData(String.valueOf(anuncio.getLongitud())));
+            // Para las URLs de las imágenes, puedes dejar en claro o cifrar cada URL:
+            List<String> imgs = anuncio.getListaImagenes().stream()
+                    .map(url -> {
+                        try { return keystore.encryptData(url); }
+                        catch (Exception e) { return url; }
+                    })
+                    .collect(Collectors.toList());
+            datos.put("listaImagenes", imgs);
+
+        } catch(Exception e) {
+            // Si algo falla, guardamos TODO en claro
+            Log.w(TAG, "Error cifrando anuncio, guardo en claro", e);
+            datos.clear();
+            datos.put("titulo",       anuncio.getTitulo());
+            datos.put("descripcion",  anuncio.getDescripcion());
+            datos.put("oficio",       anuncio.getOficio());
+            datos.put("localizacion", anuncio.getLocalizacion());
+            datos.put("userId",       anuncio.getUserId());
+            datos.put("fechaPublicacion", anuncio.getFechaPublicacion());
+            datos.put("latitud",      anuncio.getLatitud());
+            datos.put("longitud",     anuncio.getLongitud());
+            datos.put("listaImagenes", anuncio.getListaImagenes());
+        }
+
+        db.collection("anuncios")
+                .add(datos)
+                .addOnSuccessListener(docRef -> onSuccess.onSuccess(docRef.getId()))
+                .addOnFailureListener(onFailure);
+    }
+
+    /**
+     * Lee un anuncio descifrando los campos que estaban cifrados.
+     */
+    public void leerAnunciosDescifrados(OnAnunciosCargadosListener listener,
+                                        OnErrorListener errorListener) {
+        db.collection(COLECCION_ANUNCIOS)
+                .addSnapshotListener((snapshots, ex) -> {
+                    if (ex != null) {
+                        errorListener.onError(ex);
+                        return;
+                    }
+                    List<Anuncio> lista = new ArrayList<>();
+                    for (QueryDocumentSnapshot doc : snapshots) {
+                        Anuncio a = new Anuncio();
+                        a.setId(doc.getId());
+                        try {
+                            // Campos cifrados
+                            a.setTitulo(      keystore.decryptData(doc.getString("titulo")));
+                            a.setDescripcion( keystore.decryptData(doc.getString("descripcion")));
+                            a.setOficio(      keystore.decryptData(doc.getString("oficio")));
+                            a.setLocalizacion(keystore.decryptData(doc.getString("localizacion")));
+                            a.setUserId(      doc.getString("userId"));
+                            a.setFechaPublicacion(doc.getLong("fechaPublicacion"));
+                            a.setLatitud(  Double.parseDouble(keystore.decryptData(doc.getString("latitud"))));
+                            a.setLongitud( Double.parseDouble(keystore.decryptData(doc.getString("longitud"))));
+                            // Lista de imágenes cifradas
+                            List<String> encImgs = (List<String>)doc.get("listaImagenes");
+                            List<String> urls = new ArrayList<>();
+                            for (String enc : encImgs) {
+                                try {
+                                    urls.add(keystore.decryptData(enc));
+                                } catch (Exception e) {
+                                    urls.add(enc);
+                                }
+                            }
+                            a.setListaImagenes(urls);
+                        } catch (Exception e) {
+                            Log.w(TAG, "Error descifrando anuncio, uso valores en claro", e);
+                            // Caer al modo “en claro” si falla el descifrado
+                            a.setTitulo(      doc.getString("titulo"));
+                            a.setDescripcion( doc.getString("descripcion"));
+                            a.setOficio(      doc.getString("oficio"));
+                            a.setLocalizacion(doc.getString("localizacion"));
+                            a.setUserId(      doc.getString("userId"));
+                            a.setFechaPublicacion(doc.getLong("fechaPublicacion"));
+                            a.setLatitud(  doc.getDouble("latitud"));
+                            a.setLongitud(doc.getDouble("longitud"));
+                            a.setListaImagenes((List<String>)doc.get("listaImagenes"));
+                        }
+                        lista.add(a);
+                    }
+                    listener.onAnunciosCargados(lista);
+                });
+    }
+
+
+
 }
 
 
