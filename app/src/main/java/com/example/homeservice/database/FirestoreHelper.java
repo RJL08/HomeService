@@ -379,7 +379,55 @@ public class FirestoreHelper {
                 });
     }
 
+    /**
+     * Busca si ya existe una conversación entre uid1 y uid2.
+     * Si la encuentra, devuelve su ID. Si no, la crea con los metadatos necesarios.
+     *
+     * @param uid1          El usuario que inicia el chat.
+     * @param uid2          El otro usuario (publisher del anuncio).
+     * @param serviceTitle  El título del servicio/anuncio.
+     * @param onSuccess     Recibe el conversationId.
+     * @param onFailure     Recibe el error.
+     */
+    public void getOrCreateConversation(
+            String uid1,
+            String uid2,
+            String serviceTitle,
+            OnSuccessListener<String> onSuccess,
+            OnFailureListener onFailure
+    ) {
+        CollectionReference convRef = db.collection("conversaciones");
 
+        // 1) Busca cualquier doc donde participants contenga uid1...
+        convRef.whereArrayContains("participants", uid1)
+                .get()
+                .addOnSuccessListener(query -> {
+                    // 2) ...y entre esos comprueba si también participan uid2
+                    for (DocumentSnapshot doc : query.getDocuments()) {
+                        List<String> parts = (List<String>) doc.get("participants");
+                        if (parts != null && parts.contains(uid2)) {
+                            onSuccess.onSuccess(doc.getId());
+                            return;
+                        }
+                    }
+                    // 3) Si no existe, creamos uno nuevo:
+                    Map<String,Object> data = new HashMap<>();
+                    data.put("participants", Arrays.asList(uid1, uid2));
+                    data.put("serviceTitle", serviceTitle);
+                    data.put("lastMessage", "");
+                    data.put("timestamp", FieldValue.serverTimestamp());
+                    // Inicializamos los campos de “última lectura” para cada usuario
+                    data.put("lastReadBy_" + uid1, 0L);
+                    data.put("lastReadBy_" + uid2, 0L);
+
+                    convRef
+                            .add(data)
+                            .addOnSuccessListener(ref -> onSuccess.onSuccess(ref.getId()))
+                            .addOnFailureListener(onFailure);
+
+                })
+                .addOnFailureListener(onFailure);
+    }
 
 }
 

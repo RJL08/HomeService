@@ -76,20 +76,25 @@ public class DetalleAnuncioActivity extends AppCompatActivity {
         Button btnAccion = findViewById(R.id.btnAccion);
         btnAccion.setText("CHAT");
         btnAccion.setOnClickListener(v -> {
-            // Obtén el publicador del anuncio:
-            String publisherId = anuncio.getUserId();
-            String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+            String publisherId    = anuncio.getUserId();
+            String currentUserId  = FirebaseAuth.getInstance().getCurrentUser().getUid();
+            String serviceTitle   = anuncio.getTitulo();
 
-            FirestoreHelper firestoreHelper = new FirestoreHelper();
-            firestoreHelper.obtenerOcrearConversacion(currentUserId, publisherId,
+            FirestoreHelper helper = new FirestoreHelper();
+            helper.getOrCreateConversation(
+                    currentUserId,
+                    publisherId,
+                    serviceTitle,
                     conversationId -> {
-                        Intent intent = new Intent(DetalleAnuncioActivity.this, ChatActivity.class);
-                        intent.putExtra("conversationId", conversationId);
-                        startActivity(intent);
+                        Intent i = new Intent(this, ChatActivity.class);
+                        i.putExtra("conversationId", conversationId);
+                        startActivity(i);
                     },
-                    error -> {
-                        Toast.makeText(DetalleAnuncioActivity.this, "Error al iniciar el chat: " + error.getMessage(), Toast.LENGTH_SHORT).show();
-                    }
+                    error -> Toast.makeText(
+                            this,
+                            "Error al iniciar el chat: " + error.getMessage(),
+                            Toast.LENGTH_SHORT
+                    ).show()
             );
         });
     }

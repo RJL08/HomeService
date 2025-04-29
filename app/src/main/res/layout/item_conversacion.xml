@@ -6,35 +6,64 @@
     android:layout_margin="8dp"
     android:elevation="4dp">
 
-    <LinearLayout
+    <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
         android:padding="12dp">
 
+        <!-- 1) Título del anuncio -->
+        <TextView
+            android:id="@+id/tvAdTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Título del Servicio"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:textColor="@android:color/black"/>
+
+        <!-- 2) Punto rojo si hay mensajes sin leer -->
+        <View
+            android:id="@+id/vUnreadDot"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:layout_alignBaseline="@id/tvAdTitle"
+            android:layout_toEndOf="@id/tvAdTitle"
+            android:layout_marginStart="6dp"
+            android:background="@drawable/punto_rojo"
+            android:visibility="gone"/>
+
+        <!-- 3) Nombre del otro usuario (opcional) -->
         <TextView
             android:id="@+id/tvOtherUserName"
+            android:layout_below="@id/tvAdTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Nombre"
-            android:textSize="16sp"
-            android:textStyle="bold"/>
+            android:text="Usuario"
+            android:textSize="14sp"
+            android:textColor="#444444"
+            android:layout_marginTop="4dp"/>
 
+        <!-- 4) Previsualización del último mensaje -->
         <TextView
             android:id="@+id/tvLastMessage"
+            android:layout_below="@id/tvOtherUserName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Último mensaje"
+            android:text="Sin mensajes"
+            android:textSize="14sp"
             android:layout_marginTop="4dp"
-            android:textSize="16sp"/>
+            android:textColor="#666666"/>
 
+        <!-- 5) Timestamp alineado a la derecha -->
         <TextView
             android:id="@+id/tvTimestamp"
+            android:layout_below="@id/tvAdTitle"
+            android:layout_alignParentEnd="true"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Fecha"
-            android:layout_marginTop="4dp"
-            android:textSize="14sp"
+            android:text="12:34 PM"
+            android:textSize="12sp"
             android:textColor="#888888"/>
-    </LinearLayout>
+
+    </RelativeLayout>
 </androidx.cardview.widget.CardView>

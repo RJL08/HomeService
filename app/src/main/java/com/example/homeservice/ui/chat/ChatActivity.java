@@ -19,7 +19,9 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.*;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ChatActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
@@ -60,6 +62,9 @@ public class ChatActivity extends AppCompatActivity {
             finish();
             return;
         }
+
+        cargarMensajes();
+        btnEnviar.setOnClickListener(v -> enviarMensaje());
 
         cargarMensajes();
 
@@ -105,23 +110,56 @@ public class ChatActivity extends AppCompatActivity {
         String texto = etMensaje.getText().toString().trim();
         if (texto.isEmpty()) return;
 
-        String encrypted = texto;
+        // 1) Cifrar el texto si es posible
+        String tempEncrypted = texto;
         if (keystore != null) {
             try {
-                encrypted = keystore.encryptData(texto);
+                tempEncrypted = keystore.encryptData(texto);
             } catch (Exception e) {
                 Log.w("ChatActivity", "No se pudo cifrar mensaje, se envía en claro", e);
             }
         }
+        final String encryptedMessage = tempEncrypted;  // ahora sí es efectivamente final
 
-        String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
-        ChatMessage mensaje = new ChatMessage(currentUserId, encrypted, new Date().getTime());
+        // 2) Construir el objeto ChatMessage con el texto cifrado
+        final String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        ChatMessage mensaje = new ChatMessage(currentUserId, encryptedMessage, new Date().getTime());
 
+        // 3) Subir a la colección de mensajes
         db.collection("conversaciones")
-                .document(conversationId)
+                .document(conversationId)   // 'conversationId' es un campo, así que está permitido
                 .collection("mensajes")
                 .add(mensaje)
-                .addOnSuccessListener(docRef -> etMensaje.setText(""))
-                .addOnFailureListener(e -> Toast.makeText(this, "Error enviando mensaje", Toast.LENGTH_SHORT).show());
+                .addOnSuccessListener(docRef -> {
+                    etMensaje.setText("");
+
+                    // 4) Actualizar el documento padre de la conversación con meta cifrada
+                    Map<String,Object> meta = new HashMap<>();
+                    meta.put("lastMessage", encryptedMessage);
+                    meta.put("timestamp", FieldValue.serverTimestamp());
+                    meta.put("lastSender", currentUserId);
+
+                    db.collection("conversaciones")
+                            .document(conversationId)
+                            .update(meta)
+                            .addOnSuccessListener(aVoid ->
+                                    Log.d("ChatActivity", "Metadatos de conversación actualizados"))
+                            .addOnFailureListener(e ->
+                                    Log.e("ChatActivity", "Error actualizando conversación", e));
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(this, "Error enviando mensaje", Toast.LENGTH_SHORT).show());
     }
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // ── MARCAR COMO LEÍDO al volver a esta pantalla ──
+        if (conversationId != null) {
+            getSharedPreferences("MyPrefs", MODE_PRIVATE)
+                    .edit()
+                    .putLong("lastRead_" + conversationId, System.currentTimeMillis())
+                    .apply();
+        }
+    }
+
 }

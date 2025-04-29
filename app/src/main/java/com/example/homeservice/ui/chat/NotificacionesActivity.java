@@ -1,5 +1,6 @@
 package com.example.homeservice.ui.chat;
 
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -77,20 +78,79 @@ public class NotificacionesActivity extends AppCompatActivity {
                             if (conv == null) continue;
                             conv.setId(doc.getId());
 
-                            // ── DESCIFRAR preview del último mensaje ──
+                            // 1) Leer autor del último mensaje
+                            String lastSender = doc.getString("lastSender");
+
+                            // 2) Timestamp y lastRead
+                            long messageTs = conv.getTimestamp() != null
+                                    ? conv.getTimestamp().toDate().getTime() : 0L;
+                            long lastReadTs = getLastReadTimestamp(conv.getId());
+
+                            // 3) Marca unread solo si NO eres tú y hay mensajes nuevos
+                            boolean isMe = currentUserId.equals(lastSender);
+                            conv.setUnread(!isMe && (messageTs > lastReadTs));
+
+                            // ── 3) Resto de tu lógica (adId, decrypt, carga de título…)
+                            String adId = doc.getString("adId");
+                            conv.setAdId(adId);
+                            conv.setAdTitle("Cargando anuncio…");
+
                             if (keystore != null && conv.getLastMessage() != null) {
                                 try {
-                                    String plain = keystore.decryptData(conv.getLastMessage());
-                                    conv.setLastMessage(plain);
+                                    conv.setLastMessage(
+                                            keystore.decryptData(conv.getLastMessage())
+                                    );
                                 } catch (Exception e) {
                                     Log.w("Notificaciones", "No se pudo descifrar lastMessage", e);
                                 }
                             }
 
                             conversationList.add(conv);
+
+                            if (adId != null) {
+                                FirebaseFirestore.getInstance()
+                                        .collection("anuncios")
+                                        .document(adId)
+                                        .get()
+                                        .addOnSuccessListener(adDoc -> {
+                                            String title = adDoc.getString("titulo");
+                                            conv.setAdTitle(title != null ? title : "—");
+                                            int index = conversationList.indexOf(conv);
+                                            if (index != -1) adapter.notifyItemChanged(index);
+                                        });
+                            }
                         }
                         adapter.notifyDataSetChanged();
                     }
                 });
     }
+
+
+    /**
+     * Recupera de SharedPreferences el timestamp de la última vez que leímos
+     * esta conversación. Si no existe, devuelve 0.
+     */
+    private long getLastReadTimestamp(String conversationId) {
+        SharedPreferences prefs = getSharedPreferences("MyPrefs", MODE_PRIVATE);
+        return prefs.getLong("lastRead_" + conversationId, 0L);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+
+        for (Conversation conv : conversationList) {
+            long messageTs = conv.getTimestamp() != null
+                    ? conv.getTimestamp().toDate().getTime()
+                    : 0L;
+            long lastReadTs = getLastReadTimestamp(conv.getId());
+
+            boolean isMe = currentUserId.equals(conv.getLastSender());   // <── aquí el cambio
+            conv.setUnread(!isMe && messageTs > lastReadTs);
+        }
+        adapter.notifyDataSetChanged();
+    }
+
+
 }
