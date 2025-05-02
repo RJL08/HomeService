@@ -51,6 +51,7 @@ dependencies {
     implementation(libs.play.services.base)
     implementation(libs.firebase.firestore)
     implementation(libs.play.services.location)
+    implementation(libs.firebase.messaging)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
@@ -64,6 +65,9 @@ dependencies {
     annotationProcessor ("com.github.bumptech.glide:compiler:4.16.0")
     implementation ("com.google.firebase:firebase-storage:20.3.0")
     implementation ("com.squareup.okhttp3:okhttp:4.10.0")
+    implementation ("androidx.activity:activity:1.8.2")
+    implementation (platform("com.google.firebase:firebase-bom:33.12.0"))
+    implementation ("com.google.firebase:firebase-messaging")
 
 
 }

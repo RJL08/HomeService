@@ -1,6 +1,5 @@
 package com.example.homeservice.ui.chat;
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Button;
@@ -13,11 +12,12 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.homeservice.R;
 import com.example.homeservice.adapter.ChatAdapter;
 import com.example.homeservice.model.ChatMessage;
+import com.example.homeservice.seguridad.CommonCrypto;
 import com.example.homeservice.utils.KeystoreManager;
-import com.google.android.gms.tasks.OnFailureListener;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.*;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -72,94 +72,113 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     private void cargarMensajes() {
+
         db.collection("conversaciones")
                 .document(conversationId)
                 .collection("mensajes")
                 .orderBy("timestamp", Query.Direction.ASCENDING)
                 .addSnapshotListener((value, error) -> {
+
                     if (error != null) {
-                        Toast.makeText(this, "Error al leer mensajes", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this,"Error al leer mensajes",Toast.LENGTH_SHORT).show();
                         return;
                     }
+
                     mensajes.clear();
                     if (value != null) {
-                        for (DocumentSnapshot doc : value.getDocuments()) {
-                            ChatMessage msg = doc.toObject(ChatMessage.class);
-                            if (msg == null) continue;
+                        for (DocumentSnapshot d : value.getDocuments()) {
 
-                            // ── DESCIFRAR el texto si es posible ──
-                            if (keystore != null) {
-                                try {
-                                    String plain = keystore.decryptData(msg.getTexto());
-                                    msg.setTexto(plain);
-                                } catch (Exception e) {
-                                    Log.w("ChatActivity", "No se pudo descifrar mensaje, lo muestro en claro", e);
-                                }
+                            ChatMessage m = d.toObject(ChatMessage.class);
+                            if (m == null) continue;
+
+                            /* —— descifrar texto —— */
+                            try {
+                                m.setTexto( CommonCrypto.decrypt( m.getTexto() ) );
+                            } catch (Exception e) {
+                                Log.w("ChatActivity","Texto ilegible → se muestra tal cual",e);
                             }
-                            mensajes.add(msg);
+
+                            mensajes.add(m);
                         }
+
                         adapter.notifyDataSetChanged();
-                        if (!mensajes.isEmpty()) {
+                        if (!mensajes.isEmpty())
                             recyclerView.scrollToPosition(mensajes.size() - 1);
-                        }
                     }
                 });
     }
 
+
     private void enviarMensaje() {
-        String texto = etMensaje.getText().toString().trim();
-        if (texto.isEmpty()) return;
 
-        // 1) Cifrar el texto si es posible
-        String tempEncrypted = texto;
-        if (keystore != null) {
-            try {
-                tempEncrypted = keystore.encryptData(texto);
-            } catch (Exception e) {
-                Log.w("ChatActivity", "No se pudo cifrar mensaje, se envía en claro", e);
-            }
+        // 0) Texto plano
+        String textoPlano = etMensaje.getText().toString().trim();
+        if (textoPlano.isEmpty()) return;
+
+        /* ───────── C I F R A R ───────── */
+        String textoCifradoTemp;              // variable temporal
+
+        try {
+            textoCifradoTemp = CommonCrypto.encrypt(textoPlano);
+        } catch (Exception e) {
+            Log.w("ChatActivity","No se pudo cifrar, se envía en claro",e);
+            textoCifradoTemp = textoPlano;
         }
-        final String encryptedMessage = tempEncrypted;  // ahora sí es efectivamente final
 
-        // 2) Construir el objeto ChatMessage con el texto cifrado
-        final String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
-        ChatMessage mensaje = new ChatMessage(currentUserId, encryptedMessage, new Date().getTime());
+        final String textoCifrado = textoCifradoTemp;   // ← ahora sí es final
+        final String miUid        = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        final ChatMessage mensaje = new ChatMessage(miUid, textoCifrado, new Date().getTime());
 
-        // 3) Subir a la colección de mensajes
-        db.collection("conversaciones")
-                .document(conversationId)   // 'conversationId' es un campo, así que está permitido
-                .collection("mensajes")
+        /* ───────── S U B I R  M E N S A J E ───────── */
+        final DocumentReference refConversacion =
+                db.collection("conversaciones").document(conversationId);
+
+        refConversacion.collection("mensajes")
                 .add(mensaje)
-                .addOnSuccessListener(docRef -> {
+                .addOnSuccessListener(r -> {
                     etMensaje.setText("");
 
-                    // 4) Actualizar el documento padre de la conversación con meta cifrada
-                    Map<String,Object> meta = new HashMap<>();
-                    meta.put("lastMessage", encryptedMessage);
-                    meta.put("timestamp", FieldValue.serverTimestamp());
-                    meta.put("lastSender", currentUserId);
+                    // —— actualizar metadatos de la conversación ——
+                    refConversacion.get().addOnSuccessListener(snapshot -> {
 
-                    db.collection("conversaciones")
-                            .document(conversationId)
-                            .update(meta)
-                            .addOnSuccessListener(aVoid ->
-                                    Log.d("ChatActivity", "Metadatos de conversación actualizados"))
-                            .addOnFailureListener(e ->
-                                    Log.e("ChatActivity", "Error actualizando conversación", e));
+                        List<String> participantes =
+                                (List<String>) snapshot.get("participants");
+                        if (participantes == null) participantes = Collections.emptyList();
+
+                        List<String> noLeidos = new ArrayList<>();
+                        for (String uid : participantes)
+                            if (!uid.equals(miUid)) noLeidos.add(uid);
+
+                        Map<String,Object> meta = new HashMap<>();
+                        meta.put("lastMessage", textoCifrado);
+                        meta.put("timestamp",   FieldValue.serverTimestamp());
+                        meta.put("lastSender",  miUid);
+                        meta.put("unreadFor",   noLeidos);
+
+                        refConversacion.update(meta)
+                                .addOnSuccessListener(v ->
+                                        Log.d("ChatActivity","Metadatos actualizados"))
+                                .addOnFailureListener(e ->
+                                        Log.e("ChatActivity","Error meta",e));
+                    });
                 })
                 .addOnFailureListener(e ->
-                        Toast.makeText(this, "Error enviando mensaje", Toast.LENGTH_SHORT).show());
+                        Toast.makeText(this,"Error enviando mensaje",Toast.LENGTH_SHORT).show());
     }
+
+
+
+
     @Override
     protected void onResume() {
         super.onResume();
-        // ── MARCAR COMO LEÍDO al volver a esta pantalla ──
-        if (conversationId != null) {
-            getSharedPreferences("MyPrefs", MODE_PRIVATE)
-                    .edit()
-                    .putLong("lastRead_" + conversationId, System.currentTimeMillis())
-                    .apply();
-        }
+
+        String myUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
+
+        db.collection("conversaciones")
+                .document(conversationId)
+                .update("unreadFor", FieldValue.arrayRemove(myUid));
     }
+
 
 }

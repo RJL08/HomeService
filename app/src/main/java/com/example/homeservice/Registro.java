@@ -1,13 +1,9 @@
 package com.example.homeservice;
 
-import static android.content.pm.PackageManager.PERMISSION_GRANTED;
-
 import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.location.Address;
-import android.location.Geocoder;
 import android.util.Log;
 import android.util.Patterns;
 import android.widget.Button;
@@ -21,6 +17,9 @@ import androidx.core.app.ActivityCompat;
 
 import com.example.homeservice.database.FirestoreHelper;
 import com.example.homeservice.model.Usuario;
+import com.example.homeservice.seguridad.CommonCrypto;
+import com.example.homeservice.seguridad.CommonKeyProvider;
+import com.example.homeservice.utils.KeystoreManager;
 import com.example.homeservice.utils.LocationHelper;
 import com.example.homeservice.utils.LocationIQHelper;
 import com.example.homeservice.utils.ValidacionUtils;
@@ -29,7 +28,7 @@ import com.google.android.gms.location.LocationServices;
 import com.google.firebase.auth.*;
 import com.google.firebase.firestore.FirebaseFirestore;
 
-import java.util.List;
+import javax.crypto.SecretKey;
 
 /**
  * Actividad para registrar nuevos usuarios en Firebase Authentication
@@ -140,41 +139,63 @@ public class Registro extends AppCompatActivity {
     /**
      * createUserWithEmailAndPassword => doc con ciudad="", luego ver permisos
      */
-    private void crearUsuario(String correo, String contrasena, String nombre, String apellidos) {
-        Log.d("RegistroDebug", "crearUsuario: email=" + correo + ", pass=" + contrasena
-                + ", nombre=" + nombre + ", apellidos=" + apellidos);
+    private void crearUsuario(String correo,
+                              String contrasena,
+                              String nombre,
+                              String apellidos) {
+
+        Log.d("RegistroDebug", "crearUsuario => " + correo);
 
         firebaseAuth.createUserWithEmailAndPassword(correo, contrasena)
                 .addOnSuccessListener(authResult -> {
-                    Log.d("RegistroDebug", "Usuario creado con éxito en Auth. UID="
-                            + authResult.getUser().getUid());
-                    Toast.makeText(this, "Usuario creado con éxito", Toast.LENGTH_SHORT).show();
 
-                    FirebaseUser user = firebaseAuth.getCurrentUser();
-                    if (user != null) {
-                        userIdCreado = user.getUid();
-                        Log.d("RegistroDebug", "userIdCreado=" + userIdCreado);
-
-                        // Guardar con ciudad = "" y lat/lon = null
-                        guardarDatosExtra(userIdCreado, nombre, apellidos, correo, "");
-
-                        // Si permiso YA => actualizamos localización
-                        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                            Log.d("RegistroDebug", "Permiso YA concedido, actualizarLocalizacionSiYaConcedido()");
-                            actualizarLocalizacionSiYaConcedido();
-                        } else {
-                            Log.d("RegistroDebug", "Permiso NO concedido, solicitamos permisoUbicacion()");
-                            locationHelper.solicitarPermisoUbicacion();
-                        }
-                    } else {
-                        Log.w("RegistroDebug", "Usuario es null después de createUser, esto es raro");
+                    FirebaseUser user = authResult.getUser();
+                    if (user == null) {
+                        Toast.makeText(this,
+                                "Ocurrió un problema inesperado", Toast.LENGTH_LONG).show();
+                        return;
                     }
+
+                    String uid = user.getUid();
+                    Toast.makeText(this,
+                            "✔ Usuario creado correctamente", Toast.LENGTH_SHORT).show();
+
+                    // ── 1) Descarga e inicializa la clave común ─────────
+                    CommonKeyProvider.get(new CommonKeyProvider.Callback() {
+                        @Override
+                        public void onReady(SecretKey key) {
+                            CommonCrypto.init(key);
+                            Toast.makeText(Registro.this,
+                                    "Clave de cifrado preparada", Toast.LENGTH_SHORT).show();
+
+                            // ── 2) Guardar perfil y ubicación ────────────────
+                            guardarDatosExtra(uid, nombre, apellidos, correo, "");
+
+                            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                                    == PackageManager.PERMISSION_GRANTED) {
+                                actualizarLocalizacionSiYaConcedido();
+                            } else {
+                                locationHelper.solicitarPermisoUbicacion();
+                            }
+                        }
+                        @Override
+                        public void onError(Exception e) {
+                            Log.e("RegistroDebug","getCommonKey",e);
+                            Toast.makeText(Registro.this,
+                                    "Error preparando clave. Intenta más tarde",
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    });
+
                 })
                 .addOnFailureListener(e -> {
-                    Log.e("RegistroDebug", "Fallo al crear usuario: " + e.getMessage());
-                    Toast.makeText(this, "Error al crear usuario: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Log.e("RegistroDebug","createUser",e);
+                    Toast.makeText(this,
+                            "Error al crear usuario: " + e.getMessage(),
+                            Toast.LENGTH_LONG).show();
                 });
     }
+
 
     /**
      * Actualiza la ciudad y lat/lon si el permiso YA estaba concedido

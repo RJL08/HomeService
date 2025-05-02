@@ -1,14 +1,23 @@
 package com.example.homeservice.ui.Anuncios;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -20,11 +29,19 @@ import com.example.homeservice.databinding.FragmentHomeBinding;
 import com.example.homeservice.interfaz.OnFavoriteToggleListener;
 import com.example.homeservice.model.Anuncio;
 import com.example.homeservice.adapter.AnuncioAdapter;
+import com.example.homeservice.notificaciones.GestorNotificaciones;
+import com.example.homeservice.utils.LocationHelper;
+import com.example.homeservice.utils.LocationIQHelper;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
 import com.google.firebase.auth.FirebaseAuth;
 
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 public class HomeFragment extends Fragment implements OnAnuncioClickListener {
@@ -35,6 +52,9 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
     private List<Anuncio> listaAnuncios;
     private Button btnCategorias;
     private Set<String> favoritosIds = new HashSet<>();
+    private FirebaseAuth firebaseAuth;
+    private LocationHelper locationHelper;
+    private ActivityResultLauncher<String> locationPermissionLauncher;
 
 
     @Override
@@ -42,6 +62,22 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
                              ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentHomeBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
+
+        firebaseAuth   = FirebaseAuth.getInstance();
+        locationHelper = new LocationHelper(requireActivity());
+
+        // 1) Configura el lanzador de permiso
+        locationPermissionLauncher =
+                registerForActivityResult(
+                        new ActivityResultContracts.RequestPermission(),
+                        isGranted -> {
+                            if (isGranted) {
+                                obtenerYActualizarUbicacion();
+                            } else {
+                                Log.w("HomeFragment", "Permiso de ubicación denegado");
+                            }
+                        }
+                );
 
         // Configuro el RecyclerView
         recyclerView = binding.recyclerViewAnuncios;
@@ -84,7 +120,98 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
         // Cargo los anuncios
         cargarAnuncios();
 
+
+        // 3) Pide o comprueba permiso de ubicación
+        if (ContextCompat.checkSelfPermission(requireContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED) {
+            obtenerYActualizarUbicacion();
+        } else {
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
+        }
+
+        // Pedimos permiso para notificaciones si hace falta (solo en Android 13+)
+        GestorNotificaciones.pedirPermisoSiHaceFalta(this);
+
         return root;
+    }
+
+    /** Copiado tal cual de tu Login: obtiene lat/lon, geocodifica y actualiza Firestore */
+    private void obtenerYActualizarUbicacion() {
+        FusedLocationProviderClient client =
+                LocationServices.getFusedLocationProviderClient(requireActivity());
+        if (ActivityCompat.checkSelfPermission(requireContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        client.getLastLocation()
+                .addOnSuccessListener(location -> {
+                    if (location == null) return;
+                    double lat = location.getLatitude();
+                    double lon = location.getLongitude();
+
+                    // Reverse-geocode con Geocoder:
+                    String ciudad = "Desconocido";
+                    try {
+                        List<Address> dirs = new Geocoder(requireContext(), Locale.getDefault())
+                                .getFromLocation(lat, lon, 1);
+                        if (!dirs.isEmpty()) {
+                            Address a = dirs.get(0);
+                            ciudad = a.getLocality() != null
+                                    ? a.getLocality()
+                                    : a.getAdminArea();
+                        }
+                    } catch (IOException e) {
+                        Log.e("HomeFragment", "Error geocodificando", e);
+                    }
+
+                    // Leemos y actualizamos el usuario cifrado:
+                    String uid = firebaseAuth.getCurrentUser().getUid();
+                    if (uid == null) return;
+                    FirestoreHelper helper = new FirestoreHelper();
+                    String finalCiudad = ciudad;
+                    helper.leerUsuarioDescifrado(
+                            uid,
+                            usuarioLeido -> {
+                                if (usuarioLeido == null) return;
+                                usuarioLeido.setLat(lat);
+                                usuarioLeido.setLon(lon);
+                                usuarioLeido.setLocalizacion(finalCiudad);
+                                helper.guardarUsuarioCifrado(
+                                        uid,
+                                        usuarioLeido,
+                                        aVoid -> Log.d("HomeFragment",
+                                                "Ubicación actualizada a " + finalCiudad),
+                                        e -> Log.e("HomeFragment",
+                                                "Error guardando ubicación", e)
+                                );
+                            },
+                            e -> Log.e("HomeFragment", "Error leyendo usuario", e)
+                    );
+                })
+                .addOnFailureListener(e ->
+                        Log.e("HomeFragment", "Error obteniendo localización", e)
+                );
+    }
+
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        locationHelper.handleRequestPermissionsResult(
+                requestCode, permissions, grantResults,
+                (lat, lon) -> {
+                    // permiso concedido: volvemos a llamar
+                    obtenerYActualizarUbicacion();
+                },
+                ex -> {
+                    Log.w("HomeFragment", "Permiso ubicación denegado o fallo", ex);
+                }
+        );
     }
 
     @Override

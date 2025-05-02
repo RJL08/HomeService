@@ -5,6 +5,7 @@ package com.example.homeservice.database;
 import android.util.Log;
 import com.example.homeservice.model.Anuncio;
 import com.example.homeservice.model.Usuario;
+import com.example.homeservice.seguridad.CommonCrypto;
 import com.example.homeservice.utils.KeystoreManager;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -185,30 +186,7 @@ public class FirestoreHelper {
                 });
     }
 
-    public void obtenerOcrearConversacion(String userId1, String userId2,
-                                          OnSuccessListener<String> onSuccess,
-                                          OnFailureListener onFailure) {
-        // Genera un ID único ordenado (por ejemplo, concatenando los IDs ordenadamente)
-        String conversationId = userId1.compareTo(userId2) < 0 ? userId1 + "_" + userId2 : userId2 + "_" + userId1;
 
-        db.collection("conversaciones").document(conversationId)
-                .get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    if (documentSnapshot.exists()) {
-                        onSuccess.onSuccess(conversationId);
-                    } else {
-                        // Si no existe la conversación, créala.
-                        Map<String, Object> datos = new HashMap<>();
-                        datos.put("participants", Arrays.asList(userId1, userId2));
-                        datos.put("timestamp", FieldValue.serverTimestamp());
-                        db.collection("conversaciones").document(conversationId)
-                                .set(datos)
-                                .addOnSuccessListener(aVoid -> onSuccess.onSuccess(conversationId))
-                                .addOnFailureListener(onFailure);
-                    }
-                })
-                .addOnFailureListener(onFailure);
-    }
 
     /**
      * Agrega un anuncio a favoritos.
@@ -279,105 +257,105 @@ public class FirestoreHelper {
      * Crea un anuncio cifrando los campos sensibles.
      */
     public void crearAnuncioCifrado(
-            Anuncio anuncio,
-            OnSuccessListener<String> onSuccess,
-            OnFailureListener onFailure
-    ) {
-        Map<String,Object> datos = new HashMap<>();
-        try {
-            datos.put("titulo",       keystore.encryptData(anuncio.getTitulo()));
-            datos.put("descripcion",  keystore.encryptData(anuncio.getDescripcion()));
-            datos.put("oficio",       keystore.encryptData(anuncio.getOficio()));
-            datos.put("localizacion", keystore.encryptData(anuncio.getLocalizacion()));
-            datos.put("userId",       anuncio.getUserId());
-            datos.put("fechaPublicacion", anuncio.getFechaPublicacion());
-            // Coordenadas: si quieres cifrarlas, conviértelas a String
-            datos.put("latitud",  keystore.encryptData(String.valueOf(anuncio.getLatitud())));
-            datos.put("longitud", keystore.encryptData(String.valueOf(anuncio.getLongitud())));
-            // Para las URLs de las imágenes, puedes dejar en claro o cifrar cada URL:
-            List<String> imgs = anuncio.getListaImagenes().stream()
-                    .map(url -> {
-                        try { return keystore.encryptData(url); }
-                        catch (Exception e) { return url; }
-                    })
-                    .collect(Collectors.toList());
-            datos.put("listaImagenes", imgs);
+            Anuncio a,
+            OnSuccessListener<String> ok,
+            OnFailureListener err) {
 
-        } catch(Exception e) {
-            // Si algo falla, guardamos TODO en claro
-            Log.w(TAG, "Error cifrando anuncio, guardo en claro", e);
-            datos.clear();
-            datos.put("titulo",       anuncio.getTitulo());
-            datos.put("descripcion",  anuncio.getDescripcion());
-            datos.put("oficio",       anuncio.getOficio());
-            datos.put("localizacion", anuncio.getLocalizacion());
-            datos.put("userId",       anuncio.getUserId());
-            datos.put("fechaPublicacion", anuncio.getFechaPublicacion());
-            datos.put("latitud",      anuncio.getLatitud());
-            datos.put("longitud",     anuncio.getLongitud());
-            datos.put("listaImagenes", anuncio.getListaImagenes());
+        Map<String,Object> d = new HashMap<>();
+
+        try {
+            d.put("titulo",        CommonCrypto.encrypt(a.getTitulo()));
+            d.put("descripcion",   CommonCrypto.encrypt(a.getDescripcion()));
+            d.put("oficio",        CommonCrypto.encrypt(a.getOficio()));
+            d.put("localizacion",  CommonCrypto.encrypt(a.getLocalizacion()));
+
+            // Coordenadas como String cifrado
+            d.put("latitud",  CommonCrypto.encrypt(Double.toString(a.getLatitud())));
+            d.put("longitud", CommonCrypto.encrypt(Double.toString(a.getLongitud())));
+
+            // Cada URL cifrada individualmente
+            List<String> urlsEnc = new ArrayList<>();
+            for (String url : a.getListaImagenes()) {
+                urlsEnc.add( CommonCrypto.encrypt(url) );
+            }
+            d.put("listaImagenes", urlsEnc);
+
+        } catch (Exception e) {                     // Fallback en claro
+            Log.e(TAG,"Cifrado anuncio falló → guardo en claro",e);
+            d.clear();
+            d.put("titulo",        a.getTitulo());
+            d.put("descripcion",   a.getDescripcion());
+            d.put("oficio",        a.getOficio());
+            d.put("localizacion",  a.getLocalizacion());
+            d.put("latitud",       a.getLatitud());
+            d.put("longitud",      a.getLongitud());
+            d.put("listaImagenes", a.getListaImagenes());
         }
 
-        db.collection("anuncios")
-                .add(datos)
-                .addOnSuccessListener(docRef -> onSuccess.onSuccess(docRef.getId()))
-                .addOnFailureListener(onFailure);
+        // Campos no sensibles
+        d.put("userId",           a.getUserId());
+        d.put("fechaPublicacion", a.getFechaPublicacion());
+
+        db.collection(COLECCION_ANUNCIOS)
+                .add(d)
+                .addOnSuccessListener(ref -> ok.onSuccess(ref.getId()))
+                .addOnFailureListener(err);
     }
+
+
 
     /**
      * Lee un anuncio descifrando los campos que estaban cifrados.
      */
-    public void leerAnunciosDescifrados(OnAnunciosCargadosListener listener,
-                                        OnErrorListener errorListener) {
+    public void leerAnunciosDescifrados(OnAnunciosCargadosListener cb,
+                                        OnErrorListener err) {
+
         db.collection(COLECCION_ANUNCIOS)
-                .addSnapshotListener((snapshots, ex) -> {
-                    if (ex != null) {
-                        errorListener.onError(ex);
-                        return;
-                    }
+                .addSnapshotListener((snap, ex) -> {
+                    if (ex != null) { err.onError(ex); return; }
+
                     List<Anuncio> lista = new ArrayList<>();
-                    for (QueryDocumentSnapshot doc : snapshots) {
-                        Anuncio a = new Anuncio();
-                        a.setId(doc.getId());
-                        try {
-                            // Campos cifrados
-                            a.setTitulo(      keystore.decryptData(doc.getString("titulo")));
-                            a.setDescripcion( keystore.decryptData(doc.getString("descripcion")));
-                            a.setOficio(      keystore.decryptData(doc.getString("oficio")));
-                            a.setLocalizacion(keystore.decryptData(doc.getString("localizacion")));
-                            a.setUserId(      doc.getString("userId"));
-                            a.setFechaPublicacion(doc.getLong("fechaPublicacion"));
-                            a.setLatitud(  Double.parseDouble(keystore.decryptData(doc.getString("latitud"))));
-                            a.setLongitud( Double.parseDouble(keystore.decryptData(doc.getString("longitud"))));
-                            // Lista de imágenes cifradas
-                            List<String> encImgs = (List<String>)doc.get("listaImagenes");
+
+                    for (QueryDocumentSnapshot d : snap) {
+                        Anuncio a = new Anuncio();  a.setId(d.getId());
+
+                        try {   /* —— descifrar todos los campos —— */
+                            a.setTitulo       ( CommonCrypto.decrypt(d.getString("titulo")) );
+                            a.setDescripcion  ( CommonCrypto.decrypt(d.getString("descripcion")) );
+                            a.setOficio       ( CommonCrypto.decrypt(d.getString("oficio")) );
+                            a.setLocalizacion ( CommonCrypto.decrypt(d.getString("localizacion")) );
+
+                            String latStr = CommonCrypto.decrypt(d.getString("latitud"));
+                            String lonStr = CommonCrypto.decrypt(d.getString("longitud"));
+                            a.setLatitud ( Double.parseDouble(latStr) );
+                            a.setLongitud( Double.parseDouble(lonStr) );
+
                             List<String> urls = new ArrayList<>();
-                            for (String enc : encImgs) {
-                                try {
-                                    urls.add(keystore.decryptData(enc));
-                                } catch (Exception e) {
-                                    urls.add(enc);
-                                }
+                            for (String enc : (List<String>) d.get("listaImagenes")) {
+                                urls.add( CommonCrypto.decrypt(enc) );
                             }
                             a.setListaImagenes(urls);
-                        } catch (Exception e) {
-                            Log.w(TAG, "Error descifrando anuncio, uso valores en claro", e);
-                            // Caer al modo “en claro” si falla el descifrado
-                            a.setTitulo(      doc.getString("titulo"));
-                            a.setDescripcion( doc.getString("descripcion"));
-                            a.setOficio(      doc.getString("oficio"));
-                            a.setLocalizacion(doc.getString("localizacion"));
-                            a.setUserId(      doc.getString("userId"));
-                            a.setFechaPublicacion(doc.getLong("fechaPublicacion"));
-                            a.setLatitud(  doc.getDouble("latitud"));
-                            a.setLongitud(doc.getDouble("longitud"));
-                            a.setListaImagenes((List<String>)doc.get("listaImagenes"));
+
+                        } catch (Exception e) {      /* —— si algo falla, intenta en claro —— */
+                            Log.w(TAG,"Descifrado falló, intento claro",e);
+                            a.setTitulo       ( d.getString("titulo") );
+                            a.setDescripcion  ( d.getString("descripcion") );
+                            a.setOficio       ( d.getString("oficio") );
+                            a.setLocalizacion ( d.getString("localizacion") );
+                            a.setLatitud      ( d.getDouble("latitud") );
+                            a.setLongitud     ( d.getDouble("longitud") );
+                            a.setListaImagenes( (List<String>) d.get("listaImagenes") );
                         }
+
+                        a.setUserId          ( d.getString("userId") );
+                        a.setFechaPublicacion( d.getLong("fechaPublicacion") );
+
                         lista.add(a);
                     }
-                    listener.onAnunciosCargados(lista);
+                    cb.onAnunciosCargados(lista);
                 });
     }
+
 
     /**
      * Busca si ya existe una conversación entre uid1 y uid2.

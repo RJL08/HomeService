@@ -17,11 +17,6 @@ import androidx.core.content.ContextCompat;
 import com.google.android.gms.location.*;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Locale;
 import java.util.function.BiConsumer;
 
 /**
@@ -71,6 +66,8 @@ public class LocationHelper {
     public interface LocationCallback {
         void onLocationReceived(Double lat, Double lon);
     }
+
+
 
     /**
      * Solicita el permiso de ubicación al usuario.
