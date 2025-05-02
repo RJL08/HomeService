@@ -164,27 +164,60 @@ public class FirestoreHelper {
      * Leer los anuncios de un usuario concreto
      * @param userId ID del usuario (Firebase Auth)
      */
-    public void leerAnunciosPorUsuario(String userId,
-                                       OnSuccessListener<List<Anuncio>> onComplete,
-                                       OnFailureListener onFailure) {
+    public void leerAnunciosPorUsuario(
+            String userId,
+            OnSuccessListener<List<Anuncio>> onComplete,
+            OnFailureListener onFailure
+    ) {
         db.collection(COLECCION_ANUNCIOS)
                 .whereEqualTo("userId", userId)
                 .get()
                 .addOnSuccessListener(querySnapshot -> {
                     List<Anuncio> lista = new ArrayList<>();
                     for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
-                        Anuncio anuncio = doc.toObject(Anuncio.class);
-                        if (anuncio != null) {
-                            lista.add(anuncio);
+                        Anuncio a = new Anuncio();
+                        a.setId(doc.getId());
+                        try {
+                            // descifrar campos sensibles
+                            a.setTitulo(CommonCrypto.decrypt(doc.getString("titulo")));
+                            a.setDescripcion(CommonCrypto.decrypt(doc.getString("descripcion")));
+                            a.setOficio(CommonCrypto.decrypt(doc.getString("oficio")));
+                            a.setLocalizacion(CommonCrypto.decrypt(doc.getString("localizacion")));
+                            // lat/lon como String cifrado → descifrar y parsear
+                            String latStr = CommonCrypto.decrypt(doc.getString("latitud"));
+                            String lonStr = CommonCrypto.decrypt(doc.getString("longitud"));
+                            a.setLatitud(Double.parseDouble(latStr));
+                            a.setLongitud(Double.parseDouble(lonStr));
+                            // lista de URLs
+                            List<String> encImgs = (List<String>) doc.get("listaImagenes");
+                            List<String> urls = new ArrayList<>();
+                            for (String enc : encImgs) {
+                                urls.add(CommonCrypto.decrypt(enc));
+                            }
+                            a.setListaImagenes(urls);
+
+                        } catch (Exception e) {
+                            // fallback “en claro”
+                            Log.w(TAG, "Error descifrando anuncio propio, uso claro", e);
+                            a.setTitulo(doc.getString("titulo"));
+                            a.setDescripcion(doc.getString("descripcion"));
+                            a.setOficio(doc.getString("oficio"));
+                            a.setLocalizacion(doc.getString("localizacion"));
+                            Object latF = doc.get("latitud"), lonF = doc.get("longitud");
+                            if (latF instanceof Number) a.setLatitud(((Number)latF).doubleValue());
+                            if (lonF instanceof Number) a.setLongitud(((Number)lonF).doubleValue());
+                            a.setListaImagenes((List<String>) doc.get("listaImagenes"));
                         }
+                        // campos no cifrados
+                        a.setUserId(doc.getString("userId"));
+                        a.setFechaPublicacion(doc.getLong("fechaPublicacion"));
+                        lista.add(a);
                     }
                     onComplete.onSuccess(lista);
                 })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error al leer anuncios por usuario: " + e.getMessage());
-                    onFailure.onFailure(e);
-                });
+                .addOnFailureListener(onFailure);
     }
+
 
 
 

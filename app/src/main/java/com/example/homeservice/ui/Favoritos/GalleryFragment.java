@@ -2,6 +2,7 @@ package com.example.homeservice.ui.Favoritos;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,6 +18,7 @@ import com.example.homeservice.interfaz.OnAnuncioClickListener;
 import com.example.homeservice.database.FirestoreHelper;
 import com.example.homeservice.interfaz.OnFavoriteToggleListener;
 import com.example.homeservice.model.Anuncio;
+import com.example.homeservice.seguridad.CommonCrypto;
 import com.example.homeservice.ui.Anuncios.DetalleAnuncioActivity;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -91,35 +93,82 @@ public class GalleryFragment extends Fragment implements OnAnuncioClickListener 
                         adapter.notifyDataSetChanged();
                         return;
                     }
-                    // ──────────────────────────────────────
-                    // Aquí empieza el bloque que hay que pegar
+
                     FirebaseFirestore.getInstance()
                             .collection("anuncios")
-                            .whereIn(FieldPath.documentId(), anuncioIds)   // usa FieldPath para el id
+                            .whereIn(FieldPath.documentId(), anuncioIds)
                             .get()
                             .addOnSuccessListener(snap -> {
                                 favoritosList.clear();
-                                for (DocumentSnapshot doc: snap.getDocuments()) {
-                                    Anuncio a = doc.toObject(Anuncio.class);
-                                    a.setId(doc.getId());       // asigna el id de Firestore
-                                    a.setFavorite(true);        // marca como favorito
+                                for (DocumentSnapshot doc : snap.getDocuments()) {
+                                    Anuncio a = new Anuncio();
+                                    a.setId(doc.getId());
+                                    a.setFavorite(true);
+
+                                    try {
+                                        // descifrado de campos sensibles
+                                        a.setTitulo(
+                                                CommonCrypto.decrypt(doc.getString("titulo"))
+                                        );
+                                        a.setDescripcion(
+                                                CommonCrypto.decrypt(doc.getString("descripcion"))
+                                        );
+                                        a.setOficio(
+                                                CommonCrypto.decrypt(doc.getString("oficio"))
+                                        );
+                                        a.setLocalizacion(
+                                                CommonCrypto.decrypt(doc.getString("localizacion"))
+                                        );
+
+                                        // latitud / longitud como String cifrado → descifrar y parsear
+                                        String latStr = CommonCrypto.decrypt(doc.getString("latitud"));
+                                        String lonStr = CommonCrypto.decrypt(doc.getString("longitud"));
+                                        a.setLatitud(Double.parseDouble(latStr));
+                                        a.setLongitud(Double.parseDouble(lonStr));
+
+                                        // lista de imágenes
+                                        List<String> encImgs = (List<String>) doc.get("listaImagenes");
+                                        List<String> urls = new ArrayList<>();
+                                        for (String encUrl : encImgs) {
+                                            urls.add(CommonCrypto.decrypt(encUrl));
+                                        }
+                                        a.setListaImagenes(urls);
+
+                                    } catch (Exception e) {
+                                        // si algo falla, intenta en claro
+                                        Log.w("GalleryFragment","Error descifrando favorito, uso en claro", e);
+                                        a.setTitulo(doc.getString("titulo"));
+                                        a.setDescripcion(doc.getString("descripcion"));
+                                        a.setOficio(doc.getString("oficio"));
+                                        a.setLocalizacion(doc.getString("localizacion"));
+                                        // si estaba guardado como number, asumir getDouble
+                                        Object latField = doc.get("latitud");
+                                        Object lonField = doc.get("longitud");
+                                        if (latField instanceof Number) {
+                                            a.setLatitud(((Number)latField).doubleValue());
+                                        }
+                                        if (lonField instanceof Number) {
+                                            a.setLongitud(((Number)lonField).doubleValue());
+                                        }
+                                        a.setListaImagenes((List<String>)doc.get("listaImagenes"));
+                                    }
+
                                     favoritosList.add(a);
                                 }
                                 adapter.notifyDataSetChanged();
                             })
-                            .addOnFailureListener(e -> {
-                                Toast.makeText(getContext(),
-                                        "Error cargando favoritos", Toast.LENGTH_SHORT).show();
-                            });
-                    // Aquí termina el bloque
-                    // ──────────────────────────────────────
-
+                            .addOnFailureListener(e ->
+                                    Toast.makeText(getContext(),
+                                            "Error cargando favoritos", Toast.LENGTH_SHORT
+                                    ).show()
+                            );
                 },
                 e -> Toast.makeText(getContext(),
                         "Error obteniendo favoritos: "+e.getMessage(),
                         Toast.LENGTH_SHORT).show()
         );
     }
+
 
     @Override
     public void onAnuncioClick(Anuncio anuncio) {
