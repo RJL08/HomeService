@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -16,6 +17,7 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
@@ -35,6 +37,10 @@ import com.example.homeservice.utils.LocationIQHelper;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.functions.FirebaseFunctions;
+import com.google.firebase.ktx.BuildConfig;
+import com.google.firebase.messaging.FirebaseMessaging;
 
 
 import java.io.IOException;
@@ -56,12 +62,73 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
     private LocationHelper locationHelper;
     private ActivityResultLauncher<String> locationPermissionLauncher;
 
+    private final ActivityResultLauncher<String> notiPermLauncher =
+            registerForActivityResult(
+                    new ActivityResultContracts.RequestPermission(),
+                    isGranted -> {
+                        if (isGranted) {
+                            // Ya puedes mostrar notificaciones: sube el token
+                            FirebaseMessaging.getInstance().getToken()
+                                    .addOnSuccessListener(GestorNotificaciones::subirTokenAFirestore);
+                        } else {
+                            // Aquí informas al usuario que sin este permiso no habrá notis
+                            Toast.makeText(requireContext(),
+                                    "Sin permiso de notificaciones no recibirás alertas",
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    }
+            );
+
+    private void pedirPermisoNoti() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // Android 13+
+            if (ContextCompat.checkSelfPermission(requireContext(),
+                    Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+
+                // Mostrar explicación si el usuario ya denegó el permiso antes
+                if (shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
+                    new AlertDialog.Builder(requireContext())
+                            .setTitle("Permiso necesario")
+                            .setMessage("Permite notificaciones para recibir alertas de mensajes nuevos")
+                            .setPositiveButton("Aceptar", (d, w) ->
+                                    notiPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS))
+                            .setNegativeButton("Cancelar", null)
+                            .show();
+                } else {
+                    // Pedir permiso directamente
+                    notiPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+                }
+            } else {
+                // Permiso ya concedido: generar token
+                manejarTokenFCM();
+            }
+        } else {
+            // Android <13: No requiere permiso, pero hay que generar token
+            manejarTokenFCM();
+        }
+    }
+
+    private void manejarTokenFCM() {
+        FirebaseMessaging.getInstance().getToken()
+                .addOnSuccessListener(token -> {
+                    // Guardar token SOLO si el usuario está autenticado
+                    if (FirebaseAuth.getInstance().getCurrentUser() != null) {
+                        GestorNotificaciones.subirTokenAFirestore(token);
+                    } else {
+                        Log.w("FCM", "Usuario no autenticado, token no guardado");
+                    }
+                })
+                .addOnFailureListener(e ->
+                        Log.e("FCM", "Error al obtener token", e)
+                );
+    }
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentHomeBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
+
+        pedirPermisoNoti();
 
         firebaseAuth   = FirebaseAuth.getInstance();
         locationHelper = new LocationHelper(requireActivity());
@@ -130,8 +197,17 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
             locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
         }
 
-        // Pedimos permiso para notificaciones si hace falta (solo en Android 13+)
-        GestorNotificaciones.pedirPermisoSiHaceFalta(this);
+
+        if (BuildConfig.DEBUG &&
+                (Build.FINGERPRINT.startsWith("generic")
+                        || Build.MODEL.contains("Emulator")
+                        || Build.MODEL.contains("Android SDK built for x86"))) {
+            // uso de emulador local
+            FirebaseFirestore.getInstance().useEmulator("10.0.2.2", 8082);
+            FirebaseFunctions.getInstance().useEmulator("10.0.2.2", 5001);
+        }
+
+
 
         return root;
     }

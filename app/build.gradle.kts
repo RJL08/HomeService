@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.google.gms.google.services)
+
+
 }
 
 android {
@@ -67,7 +69,9 @@ dependencies {
     implementation ("com.squareup.okhttp3:okhttp:4.10.0")
     implementation ("androidx.activity:activity:1.8.2")
     implementation (platform("com.google.firebase:firebase-bom:33.12.0"))
-    implementation ("com.google.firebase:firebase-messaging")
-
-
+    //implementation ("com.google.firebase:firebase-messaging:20.2.0")
+    // Opcional: Analytics (recomendado para informes de entrega)
+    implementation ("com.google.firebase:firebase-analytics")
+    implementation ("com.google.firebase:firebase-functions-ktx")
 }
+

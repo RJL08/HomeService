@@ -17,6 +17,7 @@ import androidx.core.app.ActivityCompat;
 
 import com.example.homeservice.database.FirestoreHelper;
 import com.example.homeservice.model.Usuario;
+import com.example.homeservice.notificaciones.GestorNotificaciones;
 import com.example.homeservice.seguridad.CommonCrypto;
 import com.example.homeservice.seguridad.CommonKeyProvider;
 import com.example.homeservice.utils.KeystoreManager;
@@ -27,6 +28,7 @@ import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.firebase.auth.*;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.messaging.FirebaseMessaging;
 
 import javax.crypto.SecretKey;
 
@@ -165,8 +167,20 @@ public class Registro extends AppCompatActivity {
                         @Override
                         public void onReady(SecretKey key) {
                             CommonCrypto.init(key);
-                            Toast.makeText(Registro.this,
-                                    "Clave de cifrado preparada", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(Registro.this, "Clave de cifrado preparada", Toast.LENGTH_SHORT).show();
+
+                            // ─────────── [Añade esto] ─────────── //
+                            // Generar y guardar token FCM
+                            FirebaseMessaging.getInstance().getToken()
+                                    .addOnSuccessListener(token -> {
+                                        if (FirebaseAuth.getInstance().getCurrentUser() != null) {
+                                            GestorNotificaciones.subirTokenAFirestore(token);
+                                        }
+                                    })
+                                    .addOnFailureListener(e ->
+                                            Log.e("FCM", "Error al obtener token", e)
+                                    );
+                            // ──────────────────────────────────── //
 
                             // ── 2) Guardar perfil y ubicación ────────────────
                             guardarDatosExtra(uid, nombre, apellidos, correo, "");

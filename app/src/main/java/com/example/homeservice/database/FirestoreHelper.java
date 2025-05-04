@@ -91,7 +91,7 @@ public class FirestoreHelper {
 
         db.collection(COLECCION_USUARIOS)
                 .document(userId)
-                .set(datos)
+                .set(datos, SetOptions.merge())
                 .addOnSuccessListener(onSuccess)
                 .addOnFailureListener(onFailure);
     }

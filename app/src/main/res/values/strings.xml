@@ -14,6 +14,7 @@
     <string name="titulo_anuncios">Anuncios</string>
     <string name="locationiq_api_key">pk.7042e43368a8431d0f9b7aa27227f906</string>
     <string name="favorito">Favorito</string>
+    <string name="default_notification_channel_id">canal_general</string>
 
 
     <string-array name="categorias_array">

@@ -14,6 +14,7 @@ import androidx.core.app.ActivityCompat;
 import android.Manifest;
 import com.example.homeservice.database.FirestoreHelper;
 import com.example.homeservice.model.Usuario;
+import com.example.homeservice.notificaciones.GestorNotificaciones;
 import com.example.homeservice.seguridad.CommonCrypto;
 import com.example.homeservice.seguridad.CommonKeyProvider;
 import com.example.homeservice.utils.KeystoreManager;
@@ -26,6 +27,8 @@ import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.location.*;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.*;
+import com.google.firebase.messaging.FirebaseMessaging;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
@@ -120,7 +123,17 @@ public class Login extends AppCompatActivity {
                     /* ── 1) Descarga la clave común ─────────────────────────── */
                     CommonKeyProvider.get(new CommonKeyProvider.Callback() {
                         @Override public void onReady(SecretKey key) {
-                            CommonCrypto.init(key);                // AES lista
+                            CommonCrypto.init(key);
+                            // Generar y guardar token FCM
+                            FirebaseMessaging.getInstance().getToken()
+                                    .addOnSuccessListener(token -> {
+                                        if (FirebaseAuth.getInstance().getCurrentUser() != null) {
+                                            GestorNotificaciones.subirTokenAFirestore(token);
+                                        }
+                                    })
+                                    .addOnFailureListener(e ->
+                                            Log.e("FCM", "Error al obtener token", e)
+                                    );// AES lista
                             continuarConUsuario( authResult.getUser().getUid() );
                         }
                         @Override public void onError(Exception e) {
@@ -184,6 +197,16 @@ public class Login extends AppCompatActivity {
                     CommonKeyProvider.get(new CommonKeyProvider.Callback() {
                         @Override public void onReady(SecretKey key) {
                             CommonCrypto.init(key);
+                            // Generar y guardar token FCM
+                            FirebaseMessaging.getInstance().getToken()
+                                    .addOnSuccessListener(token -> {
+                                        if (FirebaseAuth.getInstance().getCurrentUser() != null) {
+                                            GestorNotificaciones.subirTokenAFirestore(token);
+                                        }
+                                    })
+                                    .addOnFailureListener(e ->
+                                            Log.e("FCM", "Error al obtener token", e)
+                                    );
                             continuarConUsuario( authResult.getUser().getUid() );
                         }
                         @Override public void onError(Exception e) {
@@ -228,15 +251,6 @@ public class Login extends AppCompatActivity {
                                 "fotoPerfilDefault");
                     }
 
-                    /* Permisos de localización
-                    if (ActivityCompat.checkSelfPermission(this,
-                            Manifest.permission.ACCESS_FINE_LOCATION)
-                            == PackageManager.PERMISSION_GRANTED) {
-                        obtenerLocalizacionYActualizar();
-                    } else {
-                        locationHelper.solicitarPermisoUbicacion();
-                    }
-*/
                     // Lanzar MainActivity
                     startActivity(new Intent(this, MainActivity.class));
                     finish();
@@ -249,148 +263,7 @@ public class Login extends AppCompatActivity {
     }
 
 
-    /**
-     * Si ya hay permiso => obtener lat/lng => geocodificar => actualizar Firestore
-     * (MODIFICADO para también setear lat y lon en el usuario)
 
-    private void obtenerLocalizacionYActualizar() {
-        Log.d("LoginDebug", "obtenerLocalizacionYActualizar: entrando");
-
-        FusedLocationProviderClient client = LocationServices.getFusedLocationProviderClient(this);
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
-            Log.d("LoginDebug", "obtenerLocalizacionYActualizar: sin permiso, return");
-            return; // no hay permiso
-        }
-        client.getLastLocation()
-                .addOnSuccessListener(location -> {
-                    if (location != null) {
-                        double lat = location.getLatitude();
-                        double lon = location.getLongitude();
-                        Log.d("LoginDebug", "getLastLocation onSuccess. Lat=" + lat + " Lng=" + lon);
-
-                        // Usamos Geocoder local (si lo deseas), o LocationIQ. Aquí se deja la lógica tal cual
-                        String ciudad = "Desconocido";
-                        try {
-                            List<Address> direcciones = new Geocoder(this, Locale.getDefault())
-                                    .getFromLocation(lat, lon, 1);
-                            if (direcciones != null && !direcciones.isEmpty()) {
-                                Address address = direcciones.get(0);
-                                String city = address.getLocality();
-                                ciudad = (city != null) ? city : address.getAdminArea();
-                                Log.d("LoginDebug", "Geocodificado ciudad=" + ciudad);
-                            }
-                        } catch (IOException e) {
-                            Log.e("LoginDebug", "Error en geocodificar ciudad: " + e.getMessage());
-                        }
-
-                        // 1) Leer usuario en Firestore
-                        FirebaseUser user = firebaseAuth.getCurrentUser();
-                        if (user != null) {
-                            String userId = user.getUid();
-                            FirestoreHelper firestoreHelper = new FirestoreHelper();
-                            String finalCiudad = ciudad;
-
-                            firestoreHelper.leerUsuarioDescifrado(
-                                    userId,
-                                    usuarioLeido -> {
-                                        if (usuarioLeido != null) {
-                                            // 2) Asignar lat, lon y localizacion
-                                            usuarioLeido.setLat(lat);
-                                            usuarioLeido.setLon(lon);
-                                            usuarioLeido.setLocalizacion(finalCiudad);
-
-                                            // 3) Guardar
-                                            firestoreHelper.guardarUsuarioCifrado(
-                                                    userId,
-                                                    usuarioLeido,
-                                                    aVoid -> Log.d("Login", "Localización actualizada: " + finalCiudad + " lat=" + lat + " lon=" + lon),
-                                                    error -> Log.e("Login", "Error guardando localización: " + error.getMessage())
-                                            );
-                                        } else {
-                                            Log.w("LoginDebug", "leerUsuario devolvió null");
-                                        }
-                                    },
-                                    error -> Log.e("Login", "Error leyendo usuario: " + error.getMessage())
-                            );
-                        } else {
-                            Log.w("LoginDebug", "user es null en obtenerLocalizacionYActualizar");
-                        }
-                    } else {
-                        Log.d("LoginDebug", "location == null en obtenerLastLocation");
-                    }
-                })
-                .addOnFailureListener(e -> Log.e("Login", "Error al obtener localización: " + e.getMessage()));
-    }
-
-    /**
-     * onRequestPermissionsResult => si se concede => update localización
-     * (MODIFICADO para también setear lat y lon en el usuario)
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           @NonNull String[] permissions,
-                                           @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        locationHelper.handleRequestPermissionsResult(
-                requestCode,
-                permissions,
-                grantResults,
-                (lat, lon) -> {
-                    if (lat != null && lon != null) {
-                        // Llamamos a LocationIQ si quieres geocodificar
-                        LocationIQHelper.reverseGeocode(
-                                lat, lon,
-                                ciudad -> {
-                                    Log.d("LoginDebug", "ReverseGeocode => ciudad=" + ciudad);
-                                    FirebaseUser user = firebaseAuth.getCurrentUser();
-                                    if (user != null) {
-                                        String userId = user.getUid();
-                                        FirestoreHelper firestoreHelper = new FirestoreHelper();
-
-                                        firestoreHelper.leerUsuarioDescifrado(
-                                                userId,
-                                                usuarioLeido -> {
-                                                    if (usuarioLeido != null) {
-                                                        // setLocalizacion con 'ciudad'
-                                                        usuarioLeido.setLocalizacion(ciudad);
-                                                        // También guardamos lat/lon en el usuario
-                                                        usuarioLeido.setLat(lat);
-                                                        usuarioLeido.setLon(lon);
-
-                                                        firestoreHelper.guardarUsuarioCifrado(
-                                                                userId,
-                                                                usuarioLeido,
-                                                                aVoid -> {
-                                                                    Log.d("LoginDebug", "Localización actualizada: " + ciudad + " lat=" + lat + " lon=" + lon);
-                                                                    startActivity(new Intent(Login.this, MainActivity.class));
-                                                                    finish();
-                                                                },
-                                                                error -> Log.e("Login", "Error guardando localización => " + error.getMessage())
-                                                        );
-                                                    }
-                                                },
-                                                err -> Log.e("Login", "Error leyendo usuario => " + err.getMessage())
-                                        );
-                                    }
-                                },
-                                ex -> {
-                                    Log.e("LoginDebug", "Error LocationIQ => " + ex.getMessage());
-                                }
-                        );
-                    } else {
-                        Log.d("LoginDebug", "lat/lon == null => no se pudo obtener");
-                    }
-                },
-                ex -> {
-                    Log.e("LoginDebug", "Error permisos => " + ex.getMessage());
-                    startActivity(new Intent(this, MainActivity.class));
-                    finish();
-                }
-        );
-    }
-*/
     /**
      * Guardar datos en SharedPreferences
      */

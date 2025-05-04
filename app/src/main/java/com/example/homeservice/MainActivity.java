@@ -1,8 +1,11 @@
 package com.example.homeservice;
 
 import android.annotation.SuppressLint;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
@@ -38,6 +41,18 @@ public class MainActivity extends AppCompatActivity {
         setContentView(binding.getRoot());
 
         setSupportActionBar(binding.appBarMain.toolbar);
+
+        // Crear canal **antes** de setContentView(...)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel canal = new NotificationChannel(
+                    getString(R.string.default_notification_channel_id),
+                    "Notificaciones generales",
+                    NotificationManager.IMPORTANCE_HIGH
+            );
+            canal.setDescription("Canal por defecto para notificaciones de la app");
+            NotificationManager nm = getSystemService(NotificationManager.class);
+            nm.createNotificationChannel(canal);
+        }
 
         // *** 1) LEER DATOS DE SharedPreferences
         SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
