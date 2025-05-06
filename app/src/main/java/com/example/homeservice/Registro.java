@@ -317,7 +317,7 @@ public class Registro extends AppCompatActivity {
                                     .addOnFailureListener(e ->
                                             Log.e("FCM", "Error al obtener token", e)
                                     );
-                            // ── 3) Subir foto de perfil (si existe) y luego guardar todo junto ──
+                            // ── 3) Subir foto de perfil (si existe) y luego guardar a la vez
                             if (perfilUri != null) {
                                 // Detectar extensión y MIME
                                 String mime = getContentResolver().getType(perfilUri);
