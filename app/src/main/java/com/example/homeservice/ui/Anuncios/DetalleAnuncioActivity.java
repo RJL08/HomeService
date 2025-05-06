@@ -1,6 +1,8 @@
 package com.example.homeservice.ui.Anuncios;
 
 import android.content.Intent;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -11,6 +13,7 @@ import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.bumptech.glide.Glide;
@@ -48,6 +51,25 @@ public class DetalleAnuncioActivity extends AppCompatActivity {
         tvCategoria = findViewById(R.id.tvOficioDetalle);
         ivMapa = findViewById(R.id.ivMapa);
         MaterialButton btnCompartir = findViewById(R.id.btnAccionCompartir);
+
+
+        // 1) Lee tu Toolbar y conviértelo en action bar
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+
+        // 2) Ponle título y habilita la flecha “up”
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle("Detalle Anuncio");
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        }
+        // Título blanco
+        toolbar.setTitleTextColor(Color.WHITE);
+
+// Flecha blanca
+        Drawable nav = toolbar.getNavigationIcon();
+        if (nav != null) {
+            nav.setTint(Color.WHITE);
+        }
 
 
         // Recuperamos el anuncio enviado por Intent
@@ -121,6 +143,12 @@ public class DetalleAnuncioActivity extends AppCompatActivity {
             }
         });
 
+    }
+
+    @Override
+    public boolean onSupportNavigateUp() {
+        finish();  // cierra esta actividad
+        return true;
     }
 
 }

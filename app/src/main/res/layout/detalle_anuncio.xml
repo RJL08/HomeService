@@ -2,6 +2,7 @@
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -10,9 +11,8 @@
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="?attr/colorPrimary"
-        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
-        app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
+        android:background="@color/logo_background"
+
         />
 
     <!-- Contenido principal -->
@@ -75,7 +75,7 @@
         <ImageView
             android:id="@+id/ivMapa"
             android:layout_width="match_parent"
-            android:layout_height="100dp"
+            android:layout_height="150dp"
             android:layout_marginTop="8dp"
             android:scaleType="centerCrop" />
 
@@ -109,7 +109,8 @@
                 app:cornerRadius="24dp"
                 android:backgroundTint="@color/teal_700"
                 android:textColor="@android:color/white"
-                android:layout_marginStart="8dp"/>
+                android:layout_marginStart="8dp"
+                tools:ignore="HardcodedText" />
         </LinearLayout>
     </LinearLayout>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
