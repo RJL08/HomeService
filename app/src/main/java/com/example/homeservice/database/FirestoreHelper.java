@@ -345,8 +345,11 @@ public class FirestoreHelper {
 
         db.collection(COLECCION_ANUNCIOS)
                 .addSnapshotListener((snap, ex) -> {
-                    if (ex != null) { err.onError(ex); return; }
-
+                    if (ex != null) { err.onError(ex);
+                        Log.e("HomeFragment","Error snapshot", ex);
+                        err.onError(ex);
+                        return; }
+                    Log.d("HomeFragment","Snapshot docs: "+snap.getDocuments().size());
                     List<Anuncio> lista = new ArrayList<>();
 
                     for (QueryDocumentSnapshot d : snap) {
@@ -385,6 +388,7 @@ public class FirestoreHelper {
 
                         lista.add(a);
                     }
+                    Log.d("HomeFragment","Anuncios descifrados: "+lista.size());
                     cb.onAnunciosCargados(lista);
                 });
     }

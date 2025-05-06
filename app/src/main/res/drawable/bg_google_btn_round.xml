@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <!-- Blanco al 90% (ajusta el 80 de #80FFFFFF si quieres más o menos transparencia) -->
+    <solid android:color="#E6FFFFFF"/>
+    <!-- Esquinas redondeadas a 24dp -->
+    <corners android:radius="24dp"/>
+</shape>

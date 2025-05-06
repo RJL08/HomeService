@@ -299,6 +299,7 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
     }
 
     private void cargarAnuncios() {
+        Log.d("HomeFragment","Llamando a cargarAnuncios()");
         new FirestoreHelper().leerAnunciosDescifrados(
                 lista -> {
                     listaAnuncios.clear();

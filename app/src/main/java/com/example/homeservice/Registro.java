@@ -4,16 +4,30 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.util.Patterns;
+import android.view.Window;
+import android.view.WindowManager;
+import android.webkit.MimeTypeMap;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.Toast;
 import android.os.Bundle;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
+import androidx.core.view.WindowCompat;
 
 import com.example.homeservice.database.FirestoreHelper;
 import com.example.homeservice.model.Usuario;
@@ -29,6 +43,11 @@ import com.google.android.gms.location.LocationServices;
 import com.google.firebase.auth.*;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageMetadata;
+import com.google.firebase.storage.StorageReference;
+
+import java.io.File;
 
 import javax.crypto.SecretKey;
 
@@ -48,12 +67,40 @@ public class Registro extends AppCompatActivity {
     private LocationHelper locationHelper;
     private String userIdCreado;
     private boolean registroCompleto = false;
+    private EditText etRepetirContrasena;
+
+    // Al principio de la clase:
+    private static final int LIMITE_IMAGENES = 1; // aquí sólo 1
+    private Uri perfilUri = null;
+
+    // ActivityResultLaunchers:
+    private ActivityResultLauncher<Intent> cameraLauncher;
+    private ActivityResultLauncher<String> galleryLauncher;
+    private ActivityResultLauncher<String> requestCameraPermissionLauncher;
+    private ActivityResultLauncher<String> requestGalleryPermissionLauncher;
+
+    // Y enlaza tu ImageButton:
+    private ImageButton btnAgregarFoto;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         Log.d("RegistroDebug", "onCreate: Iniciando Registro activity");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_registro);
+
+        // 2) Flags edge-to-edge (para que se pinte hasta arriba)
+        Window window = getWindow();
+        WindowCompat.setDecorFitsSystemWindows(window, false);
+
+        // 3) Quitamos translúcido, permitimos dibujar fondo de barra
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            // 4) Fijamos el mismo color que tu toolbar
+            window.setStatusBarColor(ContextCompat.getColor(this, R.color.logo_background));
+        }
+
+
 
         firebaseAuth = FirebaseAuth.getInstance();
         firestore = FirebaseFirestore.getInstance();
@@ -63,6 +110,75 @@ public class Registro extends AppCompatActivity {
         etCorreoRegistro = findViewById(R.id.etCorreoRegistro);
         etContrasenaRegistro = findViewById(R.id.etContrasenaRegistro);
         btnRegistrar = findViewById(R.id.btnRegistrar);
+        etRepetirContrasena = findViewById(R.id.etRepetirContrasena);
+        btnAgregarFoto = findViewById(R.id.btnAgregarFoto);
+
+        // 1) Tomar foto por cámara
+        cameraLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == RESULT_OK && perfilUri != null) {
+                        btnAgregarFoto.setImageURI(perfilUri);
+                    }
+                }
+        );
+
+// 2) Pedir permiso de cámara
+        requestCameraPermissionLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestPermission(),
+                granted -> {
+                    if (granted) lanzarCamara();
+                    else Toast.makeText(this, "Permiso cámara denegado", Toast.LENGTH_SHORT).show();
+                }
+        );
+
+// 3) Elegir de galería
+        galleryLauncher = registerForActivityResult(
+                new ActivityResultContracts.GetContent(),
+                uri -> {
+                    if (uri != null) {
+                        perfilUri = uri;
+                        btnAgregarFoto.setImageURI(uri);
+                    }
+                }
+        );
+
+// 4) Pedir permiso lectura
+        requestGalleryPermissionLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestPermission(),
+                granted -> {
+                    if (granted) openGallery();
+                    else Toast.makeText(this, "Permiso almacenamiento denegado", Toast.LENGTH_SHORT).show();
+                }
+        );
+
+// 5) OnClick del botón:
+        btnAgregarFoto.setOnClickListener(v -> {
+            String[] options = {"Hacer foto", "Elegir de galería"};
+            new AlertDialog.Builder(this)
+                    .setTitle("Seleccionar imagen de perfil")
+                    .setItems(options, (d, which) -> {
+                        if (which == 0) { // cámara
+                            if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                                    == PackageManager.PERMISSION_GRANTED) {
+                                lanzarCamara();
+                            } else {
+                                requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA);
+                            }
+                        } else { // galería
+                            String permiso = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                                    ? Manifest.permission.READ_MEDIA_IMAGES
+                                    : Manifest.permission.READ_EXTERNAL_STORAGE;
+                            if (ContextCompat.checkSelfPermission(this, permiso)
+                                    == PackageManager.PERMISSION_GRANTED) {
+                                openGallery();
+                            } else {
+                                requestGalleryPermissionLauncher.launch(permiso);
+                            }
+                        }
+                    })
+                    .show();
+        });
 
         btnRegistrar.setOnClickListener(v -> {
             Log.d("RegistroDebug", "btnRegistrar onClick");
@@ -71,6 +187,23 @@ public class Registro extends AppCompatActivity {
         locationHelper = new LocationHelper(this);
 
         Log.d("RegistroDebug", "onCreate: finalizado");
+    }
+
+    private void openGallery() {
+        galleryLauncher.launch("image/*");
+    }
+
+    private void lanzarCamara() {
+        File fotosDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        File foto = new File(fotosDir, "perfil_" + System.currentTimeMillis() + ".jpg");
+        perfilUri = FileProvider.getUriForFile(
+                this,
+                getPackageName() + ".fileprovider",
+                foto
+        );
+        Intent cam = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        cam.putExtra(MediaStore.EXTRA_OUTPUT, perfilUri);
+        cameraLauncher.launch(cam);
     }
 
     /**
@@ -85,11 +218,15 @@ public class Registro extends AppCompatActivity {
         String apellidos = etApellidos.getText().toString().trim();
         String correo = etCorreoRegistro.getText().toString().trim();
         String contrasena = etContrasenaRegistro.getText().toString().trim();
+        String repetir   = etRepetirContrasena.getText().toString().trim();
 
-        Log.d("RegistroDebug", "Datos recogidos -> Nombre: " + nombre
-                + ", Apellidos: " + apellidos
-                + ", Correo: " + correo
-                + ", Contrasena: " + contrasena);
+        if (!contrasena.equals(repetir)) {
+            etRepetirContrasena.setError("Las contraseñas no coinciden");
+            etRepetirContrasena.requestFocus();
+            Toast.makeText(this, "Las contraseñas deben coincidir", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
 
         // Validaciones
         if (nombre.isEmpty() || !ValidacionUtils.validarNombre(nombre)) {
@@ -160,7 +297,7 @@ public class Registro extends AppCompatActivity {
 
                     String uid = user.getUid();
                     Toast.makeText(this,
-                            "✔ Usuario creado correctamente", Toast.LENGTH_SHORT).show();
+                            " Usuario creado correctamente", Toast.LENGTH_SHORT).show();
 
                     // ── 1) Descarga e inicializa la clave común ─────────
                     CommonKeyProvider.get(new CommonKeyProvider.Callback() {
@@ -180,16 +317,78 @@ public class Registro extends AppCompatActivity {
                                     .addOnFailureListener(e ->
                                             Log.e("FCM", "Error al obtener token", e)
                                     );
-                            // ──────────────────────────────────── //
+                            // ── 3) Subir foto de perfil (si existe) y luego guardar todo junto ──
+                            if (perfilUri != null) {
+                                // Detectar extensión y MIME
+                                String mime = getContentResolver().getType(perfilUri);
+                                String ext  = MimeTypeMap.getSingleton()
+                                        .getExtensionFromMimeType(mime);
+                                if (ext == null) ext = "jpg";
 
-                            // ── 2) Guardar perfil y ubicación ────────────────
-                            guardarDatosExtra(uid, nombre, apellidos, correo, "");
+                                // Referencia en Storage
+                                StorageReference ref = FirebaseStorage.getInstance()
+                                        .getReference("perfiles/" + uid + "." + ext);
 
-                            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
-                                    == PackageManager.PERMISSION_GRANTED) {
-                                actualizarLocalizacionSiYaConcedido();
+                                // Metadatos para ContentType
+                                StorageMetadata meta = new StorageMetadata.Builder()
+                                        .setContentType(mime)
+                                        .build();
+
+                                // Subida y obtención de URL
+                                ref.putFile(perfilUri, meta)
+                                        .continueWithTask(task -> {
+                                            if (!task.isSuccessful()) throw task.getException();
+                                            return ref.getDownloadUrl();
+                                        })
+                                        .addOnSuccessListener(uriDownload -> {
+                                            String fotoUrl = uriDownload.toString();
+
+                                            // ── 4) Guardar usuario cifrado con URL real ──
+                                            guardarDatosExtra(uid,
+                                                    nombre, apellidos, correo, "",
+                                                    fotoUrl);
+
+                                            // ── 5) Actualizar ubicación (inline) ──
+                                            if (checkSelfPermission(
+                                                    Manifest.permission.ACCESS_FINE_LOCATION)
+                                                    == PackageManager.PERMISSION_GRANTED) {
+                                                actualizarLocalizacionSiYaConcedido();
+                                            } else {
+                                                locationHelper.solicitarPermisoUbicacion();
+                                            }
+                                        })
+                                        .addOnFailureListener(e -> {
+                                            Log.e("RegistroDebug","Error subiendo foto", e);
+
+                                            // En caso de fallo, guardamos con "default"
+                                            guardarDatosExtra(uid,
+                                                    nombre, apellidos, correo, "",
+                                                    "default");
+
+                                            // Y actualizamos ubicación
+                                            if (checkSelfPermission(
+                                                    Manifest.permission.ACCESS_FINE_LOCATION)
+                                                    == PackageManager.PERMISSION_GRANTED) {
+                                                actualizarLocalizacionSiYaConcedido();
+                                            } else {
+                                                locationHelper.solicitarPermisoUbicacion();
+                                            }
+                                        });
+
                             } else {
-                                locationHelper.solicitarPermisoUbicacion();
+                                // Si NO hay foto, guardamos directamente con "default"
+                                guardarDatosExtra(uid,
+                                        nombre, apellidos, correo, "",
+                                        "default");
+
+                                // Y actualizamos ubicación
+                                if (checkSelfPermission(
+                                        Manifest.permission.ACCESS_FINE_LOCATION)
+                                        == PackageManager.PERMISSION_GRANTED) {
+                                    actualizarLocalizacionSiYaConcedido();
+                                } else {
+                                    locationHelper.solicitarPermisoUbicacion();
+                                }
                             }
                         }
                         @Override
@@ -397,9 +596,9 @@ public class Registro extends AppCompatActivity {
     /**
      * Guardar datos básicos con ciudad vacía
      */
-    private void guardarDatosExtra(String userId, String nombre, String apellidos, String correo, String ciudad) {
+    private void guardarDatosExtra(String userId, String nombre, String apellidos, String correo, String ciudad, String fotoPerfil) {
 
-        String fotoPerfil = "default";
+
         // lat/lon = null al principio
         Usuario usuario = new Usuario(
                 userId, nombre, apellidos, correo, ciudad, fotoPerfil, null, null
@@ -414,11 +613,7 @@ public class Registro extends AppCompatActivity {
                     Toast.makeText(Registro.this, "Datos guardados correctamente", Toast.LENGTH_SHORT).show();
 
                     // (A) Guardar en SharedPreferences para que MainActivity pueda leerlos
-                    guardarDatosEnPrefs(
-                            nombre,    // userName
-                            correo,    // userEmail
-                            fotoPerfil // userPhoto (ahora "default")
-                    );
+                    guardarDatosEnPrefs(nombre, correo, fotoPerfil);
 
                     // (B) Mantienes la lógica de registroCompleto
                     if (!registroCompleto) {

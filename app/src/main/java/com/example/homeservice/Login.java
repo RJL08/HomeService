@@ -3,14 +3,22 @@ package com.example.homeservice;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Address;
 import android.location.Geocoder;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.*;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.view.WindowCompat;
+
 import android.Manifest;
 import com.example.homeservice.database.FirestoreHelper;
 import com.example.homeservice.model.Usuario;
@@ -56,6 +64,13 @@ public class Login extends AppCompatActivity {
         Log.d("LoginDebug", "onCreate: Iniciando Login activity");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
+
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            // Importa androidx.core.content.ContextCompat
+            int semi = ContextCompat.getColor(this, R.color.status_bar_yellow_50);
+            getWindow().setStatusBarColor(semi);
+        }
 
         // Inicialización de Firebase
         firebaseAuth = FirebaseAuth.getInstance();
