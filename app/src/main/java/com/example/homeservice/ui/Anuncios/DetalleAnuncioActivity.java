@@ -2,6 +2,8 @@ package com.example.homeservice.ui.Anuncios;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -19,6 +21,9 @@ import com.example.homeservice.database.FirestoreHelper;
 import com.example.homeservice.model.Anuncio;
 import com.example.homeservice.adapter.ImagenesAdapter;
 import com.example.homeservice.ui.chat.ChatActivity;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.tabs.TabLayout;
+import com.google.android.material.tabs.TabLayoutMediator;
 import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.ArrayList;
@@ -42,6 +47,7 @@ public class DetalleAnuncioActivity extends AppCompatActivity {
         tvCiudad = findViewById(R.id.tvCiudadDetalle);
         tvCategoria = findViewById(R.id.tvOficioDetalle);
         ivMapa = findViewById(R.id.ivMapa);
+        MaterialButton btnCompartir = findViewById(R.id.btnAccionCompartir);
 
 
         // Recuperamos el anuncio enviado por Intent
@@ -70,10 +76,13 @@ public class DetalleAnuncioActivity extends AppCompatActivity {
             ArrayList<String> urls = (ArrayList<String>) anuncio.getListaImagenes(); // Asegúrate de tener este método
             ImagenesAdapter adapter = new ImagenesAdapter(urls);
             viewPager.setAdapter(adapter);
+
+
+
         }
 
         // Después de cargar los datos del anuncio en DetalleAnuncioActivity:
-        Button btnAccion = findViewById(R.id.btnAccion);
+        Button btnAccion = findViewById(R.id.btnAccionChat);
         btnAccion.setText("CHAT");
         btnAccion.setOnClickListener(v -> {
             String publisherId    = anuncio.getUserId();
@@ -97,8 +106,21 @@ public class DetalleAnuncioActivity extends AppCompatActivity {
                     ).show()
             );
         });
+
+        // Compartir texto plano
+        btnCompartir.setOnClickListener(v -> {
+            if (anuncio != null) {
+                String texto = "Título: " + anuncio.getTitulo() + "\n"
+                        + "Descripción: " + anuncio.getDescripcion() + "\n"
+                        + "Localización: " + anuncio.getLocalizacion();
+                Intent share = new Intent(Intent.ACTION_SEND);
+                share.setType("text/plain");
+                share.putExtra(Intent.EXTRA_SUBJECT, "Anuncio HomeService");
+                share.putExtra(Intent.EXTRA_TEXT, texto);
+                startActivity(Intent.createChooser(share, "Compartir anuncio via"));
+            }
+        });
+
     }
-
-
 
 }
