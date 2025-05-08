@@ -20,10 +20,16 @@ public class NotificacionesAdapter extends RecyclerView.Adapter<NotificacionesAd
 
     private final List<Conversation> conversations;
     private final Context context;
+    private final OnConversacionClickLargo listenerLargo;
 
-    public NotificacionesAdapter(List<Conversation> conversations, Context context) {
+    public NotificacionesAdapter(List<Conversation> conversations, Context context, OnConversacionClickLargo listenerLargo) {
         this.conversations = conversations;
         this.context = context;
+        this.listenerLargo = listenerLargo;
+    }
+
+    public interface OnConversacionClickLargo {
+        void onConversacionLongClick(Conversation conversacion);
     }
 
     @NonNull
@@ -75,6 +81,12 @@ public class NotificacionesAdapter extends RecyclerView.Adapter<NotificacionesAd
             Intent intent = new Intent(context, ChatActivity.class);
             intent.putExtra("conversationId", conv.getId());
             context.startActivity(intent);
+        });
+
+        // Capturamos el long-click y llamamos al listener
+        holder.itemView.setOnLongClickListener(v -> {
+            listenerLargo.onConversacionLongClick(conv);
+            return true;
         });
     }
 

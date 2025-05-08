@@ -12,6 +12,7 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.firestore.*;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -408,42 +409,66 @@ public class FirestoreHelper {
             String uid1,
             String uid2,
             String serviceTitle,
+            String adId,
             OnSuccessListener<String> onSuccess,
             OnFailureListener onFailure
     ) {
         CollectionReference convRef = db.collection("conversaciones");
 
-        // 1) Busca cualquier doc donde participants contenga uid1...
-        convRef.whereArrayContains("participants", uid1)
+        convRef
+                .whereEqualTo("adId", adId)                 // ← mismo anuncio
+                .whereArrayContains("participants", uid1)   // ← uno de los dos
                 .get()
                 .addOnSuccessListener(query -> {
-                    // 2) ...y entre esos comprueba si también participan uid2
                     for (DocumentSnapshot doc : query.getDocuments()) {
                         List<String> parts = (List<String>) doc.get("participants");
                         if (parts != null && parts.contains(uid2)) {
+                            // ① conversación exacta para este anuncio y estos 2 usuarios
                             onSuccess.onSuccess(doc.getId());
                             return;
                         }
                     }
-                    // 3) Si no existe, creamos uno nuevo:
+
+                    // ② No existe: creamos una nueva
                     Map<String,Object> data = new HashMap<>();
                     data.put("participants", Arrays.asList(uid1, uid2));
                     data.put("serviceTitle", serviceTitle);
+                    data.put("adId", adId);                         // guardamos adId
                     data.put("lastMessage", "");
                     data.put("timestamp", FieldValue.serverTimestamp());
-                    // Inicializamos los campos de “última lectura” para cada usuario
                     data.put("lastReadBy_" + uid1, 0L);
                     data.put("lastReadBy_" + uid2, 0L);
+                    data.put("ocultadoPara", Collections.emptyList());
+                    data.put("unreadFor",     Collections.emptyList());
 
-                    convRef
-                            .add(data)
+                    convRef.add(data)
                             .addOnSuccessListener(ref -> onSuccess.onSuccess(ref.getId()))
                             .addOnFailureListener(onFailure);
-
                 })
                 .addOnFailureListener(onFailure);
     }
 
+
+
+    /**
+     * Agrega un usuario a la lista de usuarios ocultos para una conversación.
+     * @param idConversacion id de la conversación
+     * @param idUsuario id del usuario a ocultar
+     * @param alExito onSuccess
+     * @param alError onFailure
+     */
+    public void ocultarConversacionParaUsuario(
+            String idConversacion,
+            String idUsuario,
+            OnSuccessListener<Void> alExito,
+            OnFailureListener alError
+    ) {
+        db.collection("conversaciones")
+                .document(idConversacion)
+                .update("ocultadoPara", FieldValue.arrayUnion(idUsuario))
+                .addOnSuccessListener(alExito)
+                .addOnFailureListener(alError);
+    }
 }
 
 

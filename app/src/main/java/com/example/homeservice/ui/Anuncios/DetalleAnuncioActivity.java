@@ -110,12 +110,14 @@ public class DetalleAnuncioActivity extends AppCompatActivity {
             String publisherId    = anuncio.getUserId();
             String currentUserId  = FirebaseAuth.getInstance().getCurrentUser().getUid();
             String serviceTitle   = anuncio.getTitulo();
+            String adId           = anuncio.getId();
 
             FirestoreHelper helper = new FirestoreHelper();
             helper.getOrCreateConversation(
                     currentUserId,
                     publisherId,
                     serviceTitle,
+                    adId,
                     conversationId -> {
                         Intent i = new Intent(this, ChatActivity.class);
                         i.putExtra("conversationId", conversationId);

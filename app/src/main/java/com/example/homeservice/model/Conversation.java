@@ -24,7 +24,7 @@ public class Conversation implements Serializable {
     @Exclude
     private boolean unread;// Computado en cliente: ¿mi ID está en unreadFor?
     private String lastSender;
-
+    private List<String> ocultadoPara;
 
     // Constructor vacío requerido por Firestore
     public Conversation() {
@@ -35,6 +35,14 @@ public class Conversation implements Serializable {
 
     // ——— Getters y setters ———
 
+    // Getter y setter para ocultadoPara
+    public List<String> getOcultadoPara() {
+        return ocultadoPara;
+    }
+    public void setOcultadoPara(List<String> ocultadoPara) {
+        this.ocultadoPara = ocultadoPara;
+    }
+
     public String getLastSender() {
         return lastSender;
     }
@@ -42,14 +50,26 @@ public class Conversation implements Serializable {
         this.lastSender = lastSender;
     }
 
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
+    public String getId() {
+        return id;
+    }
+    public void setId(String id) {
+        this.id = id;
+    }
 
-    public List<String> getParticipants() { return participants; }
-    public void setParticipants(List<String> participants) { this.participants = participants; }
+    public List<String> getParticipants() {
+        return participants;
+    }
+    public void setParticipants(List<String> participants) {
+        this.participants = participants;
+    }
 
-    public String getLastMessage() { return lastMessage; }
-    public void setLastMessage(String lastMessage) { this.lastMessage = lastMessage; }
+    public String getLastMessage() {
+        return lastMessage;
+    }
+    public void setLastMessage(String lastMessage) {
+        this.lastMessage = lastMessage;
+    }
 
     public Timestamp getTimestamp() { return timestamp; }
     public void setTimestamp(Timestamp timestamp) { this.timestamp = timestamp; }
@@ -61,10 +81,16 @@ public class Conversation implements Serializable {
     public void setAdId(String adId) { this.adId = adId; }
 
     public String getAdTitle() { return adTitle; }
-    public void setAdTitle(String adTitle) { this.adTitle = adTitle; }
+    public void setAdTitle(String adTitle) {
+        this.adTitle = adTitle;
+    }
 
-    public List<String> getUnreadFor() { return unreadFor; }
-    public void setUnreadFor(List<String> unreadFor) { this.unreadFor = unreadFor; }
+    public List<String> getUnreadFor() {
+        return unreadFor;
+    }
+    public void setUnreadFor(List<String> unreadFor) {
+        this.unreadFor = unreadFor;
+    }
 
     /**
      * Marcado en cliente para saber si ocultar el punto rojo.
