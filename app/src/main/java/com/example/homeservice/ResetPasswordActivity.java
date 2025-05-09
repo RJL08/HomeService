@@ -1,84 +1,59 @@
 package com.example.homeservice;
 
 import android.os.Bundle;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import com.example.homeservice.utils.ValidacionUtils;
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthInvalidUserException;
 
 public class ResetPasswordActivity extends AppCompatActivity {
 
-    private TextInputEditText etCorreo;
-    private MaterialButton btnEnviar;
+    private EditText etCorreo;
+    private Button btnEnviar;
+    private FirebaseAuth auth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_reset_password);
 
-        etCorreo = findViewById(R.id.etCorreoReset);
+        etCorreo  = findViewById(R.id.etCorreoReset);
         btnEnviar = findViewById(R.id.btnEnviarReset);
+        auth      = FirebaseAuth.getInstance();
 
-        btnEnviar.setOnClickListener(v -> {
-            final String email = etCorreo.getText().toString().trim();
+        btnEnviar.setOnClickListener(v -> enviarCorreoReset());
+    }
 
-            if (email.isEmpty()) {
-                etCorreo.setError("Introduce tu correo");
-                etCorreo.requestFocus();
-                return;
-            }
-            // 1) ---- Validación local (tu helper) ----
-            if (!ValidacionUtils.validarCorreo(email)) {
-                etCorreo.setError("Correo no válido");
-                etCorreo.requestFocus();
-                return;
-            }
+    private void enviarCorreoReset() {
+        String email = etCorreo.getText().toString().trim();
 
-            btnEnviar.setEnabled(false);
+        if (!ValidacionUtils.validarCorreo(email)) {
+            etCorreo.setError("Correo inválido");           // ❶ validación reutilizada
+            etCorreo.requestFocus();
+            return;
+        }
 
-            FirebaseAuth auth = FirebaseAuth.getInstance();
+        // ❷ Un solo paso: pedir a Firebase que envíe el e-mail
+        auth.sendPasswordResetEmail(email)
+                .addOnSuccessListener(aVoid ->
+                        Toast.makeText(this,
+                                "Correo de recuperación enviado",
+                                Toast.LENGTH_LONG).show())
 
-            // 1) ¿Existe el correo?
-            auth.fetchSignInMethodsForEmail(email)
-                    .addOnCompleteListener(task -> {
-                        if (!task.isSuccessful()) {
-                            Toast.makeText(this,
-                                    "Error: " + task.getException().getMessage(),
-                                    Toast.LENGTH_LONG).show();
-                            btnEnviar.setEnabled(true);
-                            return;
-                        }
-
-                        boolean existe = task.getResult() != null &&
-                                !task.getResult()
-                                        .getSignInMethods()
-                                        .isEmpty();
-
-                        if (!existe) {
-                            Toast.makeText(this,
-                                    "Ese correo no está registrado",
-                                    Toast.LENGTH_LONG).show();
-                            btnEnviar.setEnabled(true);
-                            return;
-                        }
-
-                        // 2) Sí existe ⇒ enviamos el mail de reseteo
-                        auth.sendPasswordResetEmail(email)
-                                .addOnSuccessListener(v2 -> {
-                                    Toast.makeText(this,
-                                            "Se envió un enlace a tu correo",
-                                            Toast.LENGTH_LONG).show();
-                                    finish();                       // volvemos al login
-                                })
-                                .addOnFailureListener(e -> {
-                                    Toast.makeText(this,
-                                            "Error: " + e.getMessage(),
-                                            Toast.LENGTH_LONG).show();
-                                    btnEnviar.setEnabled(true);
-                                });
-                    });
-        });
+                .addOnFailureListener(e -> {
+                    if (e instanceof FirebaseAuthInvalidUserException) {
+                        // El e-mail no corresponde a ninguna cuenta
+                        Toast.makeText(this,
+                                "Ese correo no está registrado",
+                                Toast.LENGTH_LONG).show();
+                    } else {
+                        Toast.makeText(this,
+                                "Error: " + e.getMessage(),
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
     }
 }
