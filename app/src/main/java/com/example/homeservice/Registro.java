@@ -22,6 +22,7 @@ import android.os.Bundle;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -296,6 +297,8 @@ public class Registro extends AppCompatActivity {
                     }
 
                     String uid = user.getUid();
+                    userIdCreado = uid;
+
                     Toast.makeText(this,
                             " Usuario creado correctamente", Toast.LENGTH_SHORT).show();
 
@@ -366,9 +369,7 @@ public class Registro extends AppCompatActivity {
                                                     "default");
 
                                             // Y actualizamos ubicación
-                                            if (checkSelfPermission(
-                                                    Manifest.permission.ACCESS_FINE_LOCATION)
-                                                    == PackageManager.PERMISSION_GRANTED) {
+                                            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                                                 actualizarLocalizacionSiYaConcedido();
                                             } else {
                                                 locationHelper.solicitarPermisoUbicacion();
@@ -394,18 +395,14 @@ public class Registro extends AppCompatActivity {
                         @Override
                         public void onError(Exception e) {
                             Log.e("RegistroDebug","getCommonKey",e);
-                            Toast.makeText(Registro.this,
-                                    "Error preparando clave. Intenta más tarde",
-                                    Toast.LENGTH_LONG).show();
+                            Toast.makeText(Registro.this, "Error preparando clave. Intenta más tarde", Toast.LENGTH_LONG).show();
                         }
                     });
 
                 })
                 .addOnFailureListener(e -> {
                     Log.e("RegistroDebug","createUser",e);
-                    Toast.makeText(this,
-                            "Error al crear usuario: " + e.getMessage(),
-                            Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, "Error al crear usuario: " + e.getMessage(), Toast.LENGTH_LONG).show();
                 });
     }
 
@@ -529,9 +526,7 @@ public class Registro extends AppCompatActivity {
                             },
                             ex -> {
                                 Log.e("RegistroDebug", "Error al hacer reverse geocode: " + ex.getMessage());
-                                if (userIdCreado != null) {
-                                    // Ciudad "Desconocido"
-                                    actualizarSoloCiudad(userIdCreado, "Desconocido");
+                                if (userIdCreado != null) {actualizarSoloCiudad(userIdCreado, "Desconocido");// Ciudad "Desconocido"
                                 }
                             }
                     );
@@ -601,7 +596,7 @@ public class Registro extends AppCompatActivity {
 
         // lat/lon = null al principio
         Usuario usuario = new Usuario(
-                userId, nombre, apellidos, correo, ciudad, fotoPerfil, null, null
+                userId, nombre, apellidos, correo, ciudad, fotoPerfil, 0.0, 0.0
         );
 
         // ← Sustituimos la llamada directa a Firestore por la versión cifrada:
@@ -627,7 +622,7 @@ public class Registro extends AppCompatActivity {
 
                     if (!registroCompleto) {
                         registroCompleto = true;
-                        startActivity(new Intent(this, MainActivity.class));
+                        startActivity(new Intent(this, MainActivity .class));
                         finish();
                     }
                 }

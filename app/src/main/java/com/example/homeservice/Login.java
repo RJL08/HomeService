@@ -82,6 +82,10 @@ public class Login extends AppCompatActivity {
         btnLoginCorreo = findViewById(R.id.btnLoginCorreo);
         btnLoginGoogle = findViewById(R.id.btnLoginGoogle);
         tvRegistrar = findViewById(R.id.tvRegistrar);
+        // Botón Olvide contraseña (redirecciona a ResetPasswordActivity)
+        findViewById(R.id.tvOlvidePassword).setOnClickListener(v ->
+                startActivity(new Intent(this, ResetPasswordActivity.class)));
+
 
         // Botón Google
         btnLoginGoogle.setSize(SignInButton.SIZE_WIDE);
@@ -250,7 +254,7 @@ public class Login extends AppCompatActivity {
                 usuario -> {
                     if (usuario != null) {
                         guardarDatosEnPrefs(
-                                usuario.getNombre() + " " + usuario.getApellidos(),
+                                usuario.getNombre() ,
                                 usuario.getCorreo(),
                                 usuario.getFotoPerfil());
                     } else {
@@ -258,7 +262,7 @@ public class Login extends AppCompatActivity {
                         Usuario nuevo = new Usuario(
                                 uid, "NombreDesconocido", "ApellidosDesconocidos",
                                 firebaseAuth.getCurrentUser().getEmail(),
-                                "", "fotoPerfilDefault", null, null);
+                                "", "fotoPerfilDefault", 0.0, 0.0);
                         firestoreHelper.guardarUsuarioCifrado(uid, nuevo,
                                 a -> {}, e -> Log.e("Login","Crear por defecto: "+e));
                         guardarDatosEnPrefs("NombreDesconocido",

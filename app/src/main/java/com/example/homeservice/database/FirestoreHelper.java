@@ -60,14 +60,13 @@ public class FirestoreHelper {
 
         if (keystore != null) {
             try {
-                datos.put("nombre",       keystore.encryptData(u.getNombre()));
-                datos.put("apellidos",    keystore.encryptData(u.getApellidos()));
-                datos.put("correo",       keystore.encryptData(u.getCorreo()));
-                datos.put("localizacion", keystore.encryptData(u.getLocalizacion()));
-                datos.put("fotoPerfil",   keystore.encryptData(u.getFotoPerfil()));
-                // lat/lon cifrados:
-                datos.put("lat",  keystore.encryptData(Double.toString(u.getLat())));
-                datos.put("lon",  keystore.encryptData(Double.toString(u.getLon())));
+                datos.put("nombre",       CommonCrypto.encrypt(u.getNombre()));
+                datos.put("apellidos",    CommonCrypto.encrypt(u.getApellidos()));
+                datos.put("correo",       CommonCrypto.encrypt(u.getCorreo()));
+                datos.put("localizacion", CommonCrypto.encrypt(u.getLocalizacion()));
+                datos.put("fotoPerfil",   CommonCrypto.encrypt(u.getFotoPerfil()));
+                datos.put("lat",  CommonCrypto.encrypt(Double.toString(u.getLat())));
+                datos.put("lon",  CommonCrypto.encrypt(Double.toString(u.getLon())));
             } catch (Exception e) {
                 Log.w(TAG, "Error cifrando campos, guardo todos en claro", e);
                 datos.clear();
@@ -80,7 +79,7 @@ public class FirestoreHelper {
                 datos.put("lon",          u.getLon());
             }
         } else {
-            // Keystore no disponible -> todo en claro
+            // Keystore no disponible ->  en claro
             datos.put("nombre",       u.getNombre());
             datos.put("apellidos",    u.getApellidos());
             datos.put("correo",       u.getCorreo());
@@ -113,14 +112,14 @@ public class FirestoreHelper {
 
                     if (keystore != null) {
                         try {
-                            u.setNombre(       keystore.decryptData(doc.getString("nombre")));
-                            u.setApellidos(    keystore.decryptData(doc.getString("apellidos")));
-                            u.setCorreo(       keystore.decryptData(doc.getString("correo")));
-                            u.setLocalizacion( keystore.decryptData(doc.getString("localizacion")));
-                            u.setFotoPerfil(   keystore.decryptData(doc.getString("fotoPerfil")));
-                            // lat/lon descifrados:
-                            String latStr = keystore.decryptData(doc.getString("lat"));
-                            String lonStr = keystore.decryptData(doc.getString("lon"));
+                            u.setNombre(       CommonCrypto.decrypt(doc.getString("nombre")));
+                            u.setApellidos(    CommonCrypto.decrypt(doc.getString("apellidos")));
+                            u.setCorreo(       CommonCrypto.decrypt(doc.getString("correo")));
+                            u.setLocalizacion( CommonCrypto.decrypt(doc.getString("localizacion")));
+                            u.setFotoPerfil(   CommonCrypto.decrypt(doc.getString("fotoPerfil")));
+
+                            String latStr = CommonCrypto.decrypt(doc.getString("lat"));
+                            String lonStr = CommonCrypto.decrypt(doc.getString("lon"));
                             u.setLat(Double.parseDouble(latStr));
                             u.setLon(Double.parseDouble(lonStr));
                         } catch (Exception e) {
