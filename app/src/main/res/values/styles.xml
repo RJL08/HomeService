@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Shape overlay con esquinas de 16 dp -->
+    <style name="ShapeAppearance.HomeService.Rounded16" parent="">
+        <item name="cornerSize">16dp</item>
+    </style>
+
+</resources>

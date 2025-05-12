@@ -10,4 +10,5 @@
     <color name="colorAccent">#FF4081</color>
     <color name="status_bar_yellow_50">#F8D689</color>
     <color name="app_background">#FFEA5B</color>
+    <color name="edit_profile_bg">#FFF9C4</color>
 </resources>

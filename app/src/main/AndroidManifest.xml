@@ -75,6 +75,11 @@
         <activity android:name=".utils.FilteredAnunciosActivity"
             android:exported="true" />
 
+        <activity
+            android:name=".ui.perfil.EditarPerfilActivity"
+            android:exported="true"
+            />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
