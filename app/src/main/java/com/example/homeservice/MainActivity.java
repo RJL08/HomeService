@@ -7,6 +7,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -14,26 +16,45 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-
-import androidx.activity.result.ActivityResultLauncher;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
-
 import com.example.homeservice.databinding.ActivityMainBinding;
 import com.example.homeservice.ui.Publicar.PublicarAnuncio;
 import com.example.homeservice.ui.chat.NotificacionesActivity;
 import com.example.homeservice.ui.perfil.EditarPerfilActivity;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.Tasks;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.navigation.NavigationView;
+import com.google.android.material.progressindicator.CircularProgressIndicator;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.EmailAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.firebase.auth.UserInfo;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.QuerySnapshot;
+import com.google.firebase.firestore.WriteBatch;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 import com.squareup.picasso.Picasso;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -122,6 +143,12 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             }
 
+            if (id == R.id.nav_delete) {
+                mostrarDialogoEliminar();
+                drawer.closeDrawers();
+                return true;
+            }
+
             boolean handled = NavigationUI.onNavDestinationSelected(item, navController);
             if (handled) {
                 drawer.closeDrawers();
@@ -198,4 +225,189 @@ public class MainActivity extends AppCompatActivity {
                     finish();
                 });
     }
+
+    // ───────────────────────────────────────────────────────
+//  1) Muestra el diálogo “¿Seguro que quieres eliminar…?”
+// ───────────────────────────────────────────────────────
+    private void mostrarDialogoEliminar() {
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("Eliminar cuenta")
+                .setMessage("¿Seguro que quieres borrar tu cuenta de HomeService?\n"
+                        + "Se eliminarán anuncios, favoritos y conversaciones.")
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton("Sí, eliminar", (d, w) -> reautenticarYBorrar())
+                .show();
+    }
+
+
+    // ─────────────────────────────────────────────────
+//  2) Firebase exige re-authentication para borrar
+    private void reautenticarYBorrar() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) return;
+
+        /* ───── 1· Averigua si el usuario tiene Google como proveedor ───── */
+        boolean tieneGoogle = false;
+        for (UserInfo info : user.getProviderData()) {
+            if (GoogleAuthProvider.PROVIDER_ID.equals(info.getProviderId())) {
+                tieneGoogle = true; break;
+            }
+        }
+
+        /* ───── 2· Si tiene Google, intenta re-autenticar con él ───── */
+        if (tieneGoogle) {
+            GoogleSignInAccount gsa = GoogleSignIn.getLastSignedInAccount(this);
+            if (gsa != null && gsa.getIdToken() != null) {
+                AuthCredential cred =
+                        GoogleAuthProvider.getCredential(gsa.getIdToken(), null);
+
+                user.reauthenticate(cred)
+                        .addOnSuccessListener(a -> borrarTodo(user))
+                        .addOnFailureListener(e -> {
+                            // Token caducado o sesión antigua → pide contraseña
+                            mostrarDialogoPassword(user);
+                        });
+                return;
+            }
+            // No hay cuenta Google válida: pasamos a contraseña
+        }
+
+        /* ───── 3· Email/Password (o Google sin token reciente) ───── */
+        Log.d("DeleteFlow", "Mostrando diálogo contraseña");
+        mostrarDialogoPassword(user);
+    }
+
+
+    /* ─────────────────────────────────────────────────────
+       2) Pide la contraseña y reautentica con EmailAuth
+       ───────────────────────────────────────────────────── */
+    private void mostrarDialogoPassword(FirebaseUser user) {
+        View vista = LayoutInflater.from(this)
+                .inflate(R.layout.dialog_password, null);
+        TextInputEditText etEmail = vista.findViewById(R.id.etEmail);
+        TextInputEditText etPwd   = vista.findViewById(R.id.etPwd);
+        TextInputLayout tilPwd   = vista.findViewById(R.id.tilPwd);
+
+        etEmail.setText(user.getEmail());
+
+        AlertDialog dlg = new MaterialAlertDialogBuilder(this)
+                .setTitle("Confirmar contraseña")
+                .setView(vista)
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton("Continuar", null) // lo sobreescribiremos para validar
+                .create();
+
+        dlg.setOnShowListener(d -> {
+            dlg.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                String pwd = etPwd.getText() != null ? etPwd.getText().toString().trim() : "";
+                if (pwd.isEmpty()) {
+                    tilPwd.setError("Obligatorio");
+                    return;
+                }
+                tilPwd.setError(null);
+
+                AuthCredential cred =
+                        EmailAuthProvider.getCredential(user.getEmail(), pwd);
+
+                dlg.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false); // evita toques dobles
+                user.reauthenticate(cred)
+                        .addOnSuccessListener(a -> {
+                            dlg.dismiss();
+                            borrarTodo(user);
+                        })
+                        .addOnFailureListener(e -> {
+                            tilPwd.setError("Contraseña incorrecta");
+                            dlg.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+                        });
+            });
+        });
+        dlg.show();
+    }
+
+
+
+    // ───────────────────────────────────────────────
+//  3) Borra documentos, foto de Storage y cuenta
+// ───────────────────────────────────────────────
+    private void borrarTodo(@NonNull FirebaseUser user) {
+
+        AlertDialog progreso = crearDialogoProgreso();   // rueda indeterminada
+        progreso.show();
+
+        String uid = user.getUid();
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        List<Task<Void>> tareas = new ArrayList<>();
+
+        // 3.1  Documento principal  /usuarios/{uid}
+        tareas.add(db.collection("usuarios").document(uid).delete());
+
+        // 3.2  Anuncios del usuario
+        tareas.add(borrarColeccion(db.collection("anuncios")
+                .whereEqualTo("userId", uid)));
+
+        // 3.3  Favoritos del usuario
+        tareas.add(borrarColeccion(db.collection("favoritos")
+                .whereEqualTo("userId", uid)));
+
+        // 3.4  Conversaciones + subcolección mensajes
+        tareas.add(db.collection("conversaciones")
+                .whereArrayContains("participants", uid).get()
+                .continueWithTask(t -> borrarConversaciones(t.getResult(), uid)));
+
+        // 3.5  Foto de perfil en Storage
+        StorageReference foto = FirebaseStorage.getInstance()
+                .getReference("perfiles/" + uid + ".jpg");
+        tareas.add(foto.delete().addOnFailureListener(e -> {})); // ignora si no existe
+
+        // ——— Espera a que todo termine ———
+        Tasks.whenAllComplete(tareas).addOnSuccessListener(r -> {
+            user.delete().addOnSuccessListener(v -> {
+                progreso.dismiss();
+                Toast.makeText(MainActivity.this, "Cuenta eliminada correctamente.\n¡Gracias por usar HomeService!", Toast.LENGTH_LONG)        // 3,5 s aprox.
+                        .show();
+                realizarLogout();
+            });
+        }).addOnFailureListener(e -> {
+            progreso.dismiss();
+            Toast.makeText(this,"Error al borrar: "+e.getMessage(),
+                    Toast.LENGTH_LONG).show();
+        });
+    }
+
+    // Borra todos los docs de un Query (<= 500 docs; si creces usa paginado)
+    private Task<Void> borrarColeccion(@NonNull Query q) {
+        return q.get().continueWithTask(t -> {
+            WriteBatch b = FirebaseFirestore.getInstance().batch();
+            for (DocumentSnapshot d : t.getResult()) b.delete(d.getReference());
+            return b.commit();
+        });
+    }
+
+    // Borra conversaciones y su subcolección /mensajes
+    private Task<Void> borrarConversaciones(QuerySnapshot qs, String uid) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        List<Task<Void>> subtareas = new ArrayList<>();
+
+        for (DocumentSnapshot conv : qs) {
+            // a) mensajes
+            subtareas.add(borrarColeccion(conv.getReference().collection("mensajes")));
+            // b) conversación
+            subtareas.add(conv.getReference().delete());
+        }
+        return Tasks.whenAll(subtareas);
+    }
+
+    // Crea un AlertDialog con CircularProgressIndicator centrado
+    private AlertDialog crearDialogoProgreso() {
+        CircularProgressIndicator p = new CircularProgressIndicator(this);
+        p.setIndeterminate(true);
+        p.setPadding(32, 32, 32, 32);
+
+        return new MaterialAlertDialogBuilder(this)
+                .setCancelable(false)
+                .setView(p)
+                .create();
+    }
+
+
 }

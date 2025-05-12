@@ -6,5 +6,7 @@
         android:id="@+id/action_edit_profile"
         android:title="Editar perfil"
         android:icon="@drawable/settings"
-        app:showAsAction="never" />
+        app:showAsAction="always" />
+
+
 </menu>

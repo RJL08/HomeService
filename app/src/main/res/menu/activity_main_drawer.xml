@@ -33,6 +33,11 @@
             android:icon="@drawable/logout_24px"
             android:title="Cerrar sesión" />
 
+        <item
+            android:id="@+id/nav_delete"
+            android:title="Eliminar cuenta"
+            android:icon="@drawable/delete_user"/>
+
 
     </group>
 </menu>
