@@ -1,7 +1,10 @@
 package com.example.homeservice.ui.Anuncios;
 
+import static android.content.Context.MODE_PRIVATE;
+
 import android.Manifest;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
@@ -45,6 +48,7 @@ import com.google.firebase.messaging.FirebaseMessaging;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -226,6 +230,8 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
                     if (location == null) return;
                     double lat = location.getLatitude();
                     double lon = location.getLongitude();
+                    // Guardamos en SharedPreferences
+                    guardarCoords(lat, lon);
 
                     // Reverse-geocode con Geocoder:
                     String ciudad = "Desconocido";
@@ -272,6 +278,15 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
     }
 
 
+    private void guardarCoords(double lat, double lon) {
+        SharedPreferences.Editor ed =
+                requireContext().getSharedPreferences("MyAppPrefs", MODE_PRIVATE).edit();
+        ed.putFloat("userLat", (float) lat);
+        ed.putFloat("userLon", (float) lon);
+        ed.apply();
+    }
+
+
     @Override
     public void onRequestPermissionsResult(int requestCode,
                                            @NonNull String[] permissions,
@@ -299,18 +314,58 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
     }
 
     private void cargarAnuncios() {
-        Log.d("HomeFragment","Llamando a cargarAnuncios()");
         new FirestoreHelper().leerAnunciosDescifrados(
                 lista -> {
+                    /* 1) Obtener ubicación guardada */
+                    SharedPreferences prefs = requireContext()
+                            .getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
+                    double userLat = prefs.getFloat("userLat", 999);
+                    double userLon = prefs.getFloat("userLon", 999);
+
+                    /* 2) Calcular distancia para cada anuncio */
+                    for (Anuncio a : lista) {
+                        if (userLat != 999) {
+                            double dKm = haversineKm(userLat, userLon,
+                                    a.getLatitud(), a.getLongitud());
+                            a.setDistanceKm(dKm);
+                        }
+                    }
+
+                    /* 3) Ordenar: distancia asc y fecha desc */
+                    Collections.sort(lista, (a1, a2) -> {
+                        int cmp = Double.compare(a1.getDistanceKm(), a2.getDistanceKm());
+                        if (cmp != 0) return cmp;            // distinto radio
+                        // misma distancia → más reciente primero
+                        return Long.compare(a2.getFechaPublicacion(),
+                                a1.getFechaPublicacion());
+                    });
+
+                    /* 4) Actualizar RecyclerView */
                     listaAnuncios.clear();
                     listaAnuncios.addAll(lista);
-                    adapter.notifyDataSetChanged();
-                    // ahora cargamos qué IDs están en favoritos
-                    sincronizarFavoritos();
+                    sincronizarFavoritos();   // mantienes favoritos + notifyDataSetChanged()
                 },
-                error -> Toast.makeText(getContext(), "Error: " + error.getMessage(), Toast.LENGTH_SHORT).show()
-        );
+                e -> Toast.makeText(getContext(),
+                        "Error: "+e.getMessage(), Toast.LENGTH_SHORT).show());
     }
+
+
+    private static double haversineKm(double lat1, double lon1,
+                                      double lat2, double lon2) {
+        double R = 6371;                       // Radio Tierra km
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(Math.toRadians(lat1)) *
+                        Math.cos(Math.toRadians(lat2)) *
+                        Math.sin(dLon/2) * Math.sin(dLon/2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    }
+
+    /**
+     * Metodo para sincronizar favoritos con Firestore y actualizar el adapter.
+     */
     private void sincronizarFavoritos() {
         String uid = FirebaseAuth.getInstance().getCurrentUser().getUid();
         new FirestoreHelper().leerFavoritosDeUsuario(uid,

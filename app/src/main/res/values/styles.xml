@@ -1,9 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+
     <!-- Shape overlay con esquinas de 16 dp -->
     <style name="ShapeAppearance.HomeService.Rounded16" parent="">
         <item name="cornerSize">16dp</item>
+    </style>
+
+    <!-- 1· Forma redondeada de 24 dp -->
+    <style name="Shape.HomeService.Rounded24" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">24dp</item>
+    </style>
+
+    <!-- 2· Apariencia de texto para el título -->
+    <style name="TextAppearance.HomeService.DialogTitle"
+        parent="TextAppearance.MaterialComponents.Headline6">
+        <item name="android:textColor">@color/logo_background</item>
+    </style>
+
+    <!-- 3· Apariencia de texto para el cuerpo -->
+    <style name="TextAppearance.HomeService.DialogBody"
+        parent="TextAppearance.MaterialComponents.Body2">
+        <item name="android:textColor">@color/black</item>
+    </style>
+
+    <!-- 4· Estilo de los botones del diálogo -->
+    <style name="Widget.HomeService.Dialog.Button"
+        parent="Widget.MaterialComponents.Button.TextButton.Dialog">
+        <item name="android:textAllCaps">false</item>
+    </style>
+
+    <!-- 5· Overlay que aplicarás en MaterialAlertDialogBuilder -->
+    <style name="ThemeOverlay.HomeService.Dialog"
+        parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
+        <!-- Forma redondeada (en Material 2 se usa shapeAppearanceOverlay) -->
+        <item name="shapeAppearanceOverlay">@style/Shape.HomeService.Rounded24</item>
+        <!-- Fondo del diálogo -->
+        <item name="android:windowBackground">@color/white</item>
+        <!-- Texto -->
+        <item name="textAppearanceHeadline6">@style/TextAppearance.HomeService.DialogTitle</item>
+        <item name="textAppearanceBody2">@style/TextAppearance.HomeService.DialogBody</item>
+        <!-- Botones -->
+        <item name="buttonStyle">@style/Widget.HomeService.Dialog.Button</item>
     </style>
 
 </resources>

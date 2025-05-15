@@ -68,7 +68,7 @@ public class Login extends AppCompatActivity {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             // Importa androidx.core.content.ContextCompat
-            int semi = ContextCompat.getColor(this, R.color.status_bar_yellow_50);
+            int semi = ContextCompat.getColor(this, R.color.logo_background);
             getWindow().setStatusBarColor(semi);
         }
 

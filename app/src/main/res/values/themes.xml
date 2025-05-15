@@ -15,14 +15,17 @@
 
     </style>
 
-    <style name="Theme.HomeService.NoActionBar">
-        <item name="windowActionBar">false</item>
-        <item name="windowNoTitle">true</item>
+    <style name="Theme.HomeService.AppBarOverlay"
+        parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
+
+    <style name="Theme.HomeService.PopupOverlay"
+        parent="ThemeOverlay.AppCompat.Light" />
+
+    <style name="Theme.HomeService.NoActionBar"
+        parent="Theme.HomeService">
+        <!-- Aquí puedes sobreescribir atributos extra si quieres,
+             pero al heredar de Theme.HomeService ya tendrás NoActionBar -->
     </style>
-
-    <style name="Theme.HomeService.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
-
-    <style name="Theme.HomeService.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
 
 
 

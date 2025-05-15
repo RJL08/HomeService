@@ -16,6 +16,7 @@ import com.example.homeservice.interfaz.OnFavoriteToggleListener;
 import com.example.homeservice.model.Anuncio;
 
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Adaptador para mostrar la lista de anuncios en el RecyclerView del HomeFragment.
@@ -54,6 +55,7 @@ public class AnuncioAdapter extends RecyclerView.Adapter<AnuncioAdapter.AnuncioV
         holder.tvLocalizacion.setText(anuncio.getLocalizacion());
         holder.tvDescripcion.setText(anuncio.getDescripcion());
 
+
         // Carga de imagen principal
         if (!anuncio.getListaImagenes().isEmpty()) {
             String urlPrimera = anuncio.getListaImagenes().get(0);
@@ -89,6 +91,14 @@ public class AnuncioAdapter extends RecyclerView.Adapter<AnuncioAdapter.AnuncioV
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) listener.onAnuncioClick(anuncio);
         });
+
+        if (anuncio.getDistanceKm() != Double.MAX_VALUE) {
+            holder.tvDist.setVisibility(View.VISIBLE);
+            holder.tvDist.setText(String.format(Locale.getDefault(),
+                    "%.1f km", anuncio.getDistanceKm()));
+        } else {
+            holder.tvDist.setVisibility(View.GONE);
+        }
     }
 
     @Override
@@ -97,8 +107,9 @@ public class AnuncioAdapter extends RecyclerView.Adapter<AnuncioAdapter.AnuncioV
     }
 
     static class AnuncioViewHolder extends RecyclerView.ViewHolder {
-        TextView tvTitulo, tvOficio, tvLocalizacion, tvDescripcion;
+        TextView tvTitulo, tvOficio, tvLocalizacion, tvDescripcion, tvDist;
         ImageView ivAnuncio, ivFavorite;
+
 
         public AnuncioViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -108,6 +119,7 @@ public class AnuncioAdapter extends RecyclerView.Adapter<AnuncioAdapter.AnuncioV
             tvOficio = itemView.findViewById(R.id.tvOficio);
             tvLocalizacion = itemView.findViewById(R.id.tvLocalizacion);
             tvDescripcion = itemView.findViewById(R.id.tvDescripcion);
+            tvDist          = itemView.findViewById(R.id.tvDist);
         }
     }
 }

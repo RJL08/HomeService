@@ -52,6 +52,15 @@
                 android:textSize="14sp"/>
 
             <TextView
+                android:id="@+id/tvDist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0.0 km"
+                android:textSize="13sp"
+                android:textColor="@color/black"
+                android:visibility="gone"  />
+
+            <TextView
                 android:id="@+id/tvDescripcion"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

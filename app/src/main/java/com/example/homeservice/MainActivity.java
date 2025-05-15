@@ -230,6 +230,8 @@ public class MainActivity extends AppCompatActivity {
 //  1) Muestra el diálogo “¿Seguro que quieres eliminar…?”
 // ───────────────────────────────────────────────────────
     private void mostrarDialogoEliminar() {
+        View v = LayoutInflater.from(this)
+                .inflate(R.layout.dialog_delete_confirm, null);
         new MaterialAlertDialogBuilder(this)
                 .setTitle("Eliminar cuenta")
                 .setMessage("¿Seguro que quieres borrar tu cuenta de HomeService?\n"
@@ -290,7 +292,7 @@ public class MainActivity extends AppCompatActivity {
 
         etEmail.setText(user.getEmail());
 
-        AlertDialog dlg = new MaterialAlertDialogBuilder(this)
+        AlertDialog dlg = new MaterialAlertDialogBuilder(this, R.style.ThemeOverlay_HomeService_Dialog)
                 .setTitle("Confirmar contraseña")
                 .setView(vista)
                 .setNegativeButton("Cancelar", null)

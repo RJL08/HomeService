@@ -22,7 +22,8 @@ public class Anuncio implements Serializable {
     private double longitud;        // Longitud para la ubicación exacta
     private ArrayList<String> listaImagenes = new ArrayList<>();
     private boolean favorite = false;
-
+    // campo para calcular distancia entre dos anuncios
+    private transient double distanceKm = Double.MAX_VALUE;
 
     /**
      * Constructor vacío para Firestore (des-serialización).
@@ -47,6 +48,13 @@ public class Anuncio implements Serializable {
     }
 
     // Getters y setters
+
+    public double getDistanceKm() {
+        return distanceKm;
+    }
+    public void setDistanceKm(double d) {
+        distanceKm = d;
+    }
 
     public String getId() {
         return id;
