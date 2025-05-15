@@ -362,18 +362,27 @@ public class MainActivity extends AppCompatActivity {
         tareas.add(foto.delete().addOnFailureListener(e -> {})); // ignora si no existe
 
         // ——— Espera a que todo termine ———
-        Tasks.whenAllComplete(tareas).addOnSuccessListener(r -> {
-            user.delete().addOnSuccessListener(v -> {
-                progreso.dismiss();
-                Toast.makeText(MainActivity.this, "Cuenta eliminada correctamente.\n¡Gracias por usar HomeService!", Toast.LENGTH_LONG)        // 3,5 s aprox.
-                        .show();
-                realizarLogout();
-            });
-        }).addOnFailureListener(e -> {
-            progreso.dismiss();
-            Toast.makeText(this,"Error al borrar: "+e.getMessage(),
-                    Toast.LENGTH_LONG).show();
-        });
+        Tasks.whenAll(tareas)
+                .addOnSuccessListener(r -> {
+                    // Solo si TODOS los borrados han tenido éxito
+                    user.delete()
+                            .addOnSuccessListener(v -> {
+                                progreso.dismiss();
+                                Toast.makeText(MainActivity.this,
+                                        "Cuenta eliminada correctamente.\n¡Gracias por usar HomeService!",
+                                        Toast.LENGTH_LONG).show();
+                                realizarLogout();
+                            })
+                            .addOnFailureListener(e -> {
+                                // Si falla el user.delete
+                                progreso.dismiss();
+                                Toast.makeText(this, "Error eliminando la cuenta: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                            });
+                })
+                .addOnFailureListener(e -> {
+                    // Si falla CUALQUIER borrado de usuario/anuncios/conversaciones
+                    progreso.dismiss();Toast.makeText(this, "Error al borrar datos: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                });
     }
 
     // Borra todos los docs de un Query (<= 500 docs; si creces usa paginado)
