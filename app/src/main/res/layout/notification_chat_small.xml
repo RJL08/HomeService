@@ -27,7 +27,7 @@
             android:layout_height="wrap_content"
             android:textSize="15sp"
             android:textStyle="bold"
-            android:textColor="@color/white" />
+            android:textColor="@color/colorAccent" />
 
         <TextView
             android:id="@+id/tvCuerpo"
@@ -36,6 +36,6 @@
             android:textSize="13sp"
             android:maxLines="1"
             android:ellipsize="end"
-            android:textColor="@color/white" />
+            android:textColor="@color/colorAccent" />
     </LinearLayout>
 </LinearLayout>

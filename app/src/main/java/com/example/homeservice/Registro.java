@@ -41,6 +41,7 @@ import com.example.homeservice.utils.LocationIQHelper;
 import com.example.homeservice.utils.ValidacionUtils;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.material.imageview.ShapeableImageView;
 import com.google.firebase.auth.*;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.messaging.FirebaseMessaging;
@@ -81,7 +82,8 @@ public class Registro extends AppCompatActivity {
     private ActivityResultLauncher<String> requestGalleryPermissionLauncher;
 
     // Y enlaza tu ImageButton:
-    private ImageButton btnAgregarFoto;
+    private ShapeableImageView btnAgregarFoto;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

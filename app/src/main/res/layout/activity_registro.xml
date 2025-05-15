@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="24dp"
-    android:background="@color/app_background"
+    android:background="@color/edit_profile_bg"
     android:layout_marginTop="80dp"
     >
 
@@ -17,17 +17,16 @@
         android:gravity="center_horizontal">
 
         <!-- 1) ImageButton redondo para foto de perfil -->
-        <ImageButton
+        <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/btnAgregarFoto"
             android:layout_width="120dp"
             android:layout_height="120dp"
             android:layout_marginBottom="24dp"
-            android:background="@drawable/bg_circle_outline"
-            android:src="@drawable/foto_reg"
             android:scaleType="centerCrop"
-            android:padding="8dp"
-            android:contentDescription="Foto de perfil"
-            />
+            android:src="@drawable/foto_reg"
+            app:strokeColor="@color/logo_background"
+            app:strokeWidth="2dp"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.HomeService.Circle"/>
 
         <!-- 2) Nombre -->
         <com.google.android.material.textfield.TextInputLayout

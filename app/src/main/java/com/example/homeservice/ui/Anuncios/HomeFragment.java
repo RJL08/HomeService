@@ -31,6 +31,7 @@ import com.example.homeservice.R;
 import com.example.homeservice.interfaz.OnAnuncioClickListener;
 import com.example.homeservice.database.FirestoreHelper;
 import com.example.homeservice.databinding.FragmentHomeBinding;
+import com.example.homeservice.interfaz.OnAnuncioLongClickListener;
 import com.example.homeservice.interfaz.OnFavoriteToggleListener;
 import com.example.homeservice.model.Anuncio;
 import com.example.homeservice.adapter.AnuncioAdapter;
@@ -158,7 +159,7 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
         listaAnuncios = new ArrayList<>();
         adapter = new AnuncioAdapter(
                 listaAnuncios,
-                this,  // OnAnuncioClickListener
+                this,
                 new OnFavoriteToggleListener() {
                     @Override
                     public void onFavoriteAdded(Anuncio anuncio) {

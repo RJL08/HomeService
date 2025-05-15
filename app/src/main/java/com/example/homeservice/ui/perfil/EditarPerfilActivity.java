@@ -3,31 +3,33 @@ package com.example.homeservice.ui.perfil;
 import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
 import android.widget.*;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
+
 import com.example.homeservice.R;
 import com.example.homeservice.database.FirestoreHelper;
 import com.example.homeservice.model.Usuario;
-import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.storage.*;
 import com.squareup.picasso.Picasso;
 import java.io.ByteArrayOutputStream;
-import java.util.HashMap;
-import java.util.Map;
+import java.io.File;
+
 
 public class EditarPerfilActivity extends AppCompatActivity {
 
@@ -42,6 +44,13 @@ public class EditarPerfilActivity extends AppCompatActivity {
     private ActivityResultLauncher<String> galeriaLauncher;
     private ActivityResultLauncher<String> permisoGaleriaLauncher;
 
+    // URI temporal para la foto de cámara
+    private Uri pendingCameraUri;
+
+    // Launchers adicionales:
+    private ActivityResultLauncher<Intent> cameraLauncher;
+    private ActivityResultLauncher<String> cameraPermLauncher;
+
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_editar_perfil);
@@ -55,7 +64,7 @@ public class EditarPerfilActivity extends AppCompatActivity {
         progress   = findViewById(R.id.pr);
 
         /* ——— Botones ——— */
-        findViewById(R.id.btnCambiarFoto).setOnClickListener(v -> seleccionarFoto());
+        findViewById(R.id.btnCambiarFoto).setOnClickListener(v -> mostrarDialogoSeleccionFoto());
         findViewById(R.id.btnGuardarCambios).setOnClickListener(v -> guardarCambios());
 
         /* ——— Launchers ——— */
@@ -75,9 +84,72 @@ public class EditarPerfilActivity extends AppCompatActivity {
                     else Toast.makeText(this,"Permiso denegado",Toast.LENGTH_SHORT).show();
                 });
 
+        // ① Permiso CÁMARA
+        cameraPermLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestPermission(),
+                granted -> {
+                    if (granted) abrirCamara();
+                    else Toast.makeText(this, "Permiso de cámara denegado", Toast.LENGTH_SHORT).show();
+                }
+        );
+
+// ② Lanzar CÁMARA
+        cameraLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == RESULT_OK && pendingCameraUri != null) {
+                        nuevaFotoUri = pendingCameraUri;
+                        ivProfile.setImageURI(pendingCameraUri);
+                    }
+                }
+        );
+
         /* ——— Cargar datos de Firestore ——— */
         cargarDatosUsuario();
     }
+
+    private void mostrarDialogoSeleccionFoto() {
+        new MaterialAlertDialogBuilder(this, R.style.ThemeOverlay_HomeService_Dialog)
+                .setTitle("Seleccionar imagen")
+                .setItems(new String[]{"Cámara", "Galería"}, (dialog, which) -> {
+                    if (which == 0) {
+                        // CÁMARA
+                        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                                == PackageManager.PERMISSION_GRANTED) {
+                            abrirCamara();
+                        } else {
+                            cameraPermLauncher.launch(Manifest.permission.CAMERA);
+                        }
+                    } else {
+                        // GALERÍA
+                        String permiso = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                                ? Manifest.permission.READ_MEDIA_IMAGES
+                                : Manifest.permission.READ_EXTERNAL_STORAGE;
+                        if (ContextCompat.checkSelfPermission(this, permiso)
+                                == PackageManager.PERMISSION_GRANTED) {
+                            galeriaLauncher.launch("image/*");
+                        } else {
+                            permisoGaleriaLauncher.launch(permiso);
+                        }
+                    }
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
+    }
+
+    private void abrirCamara() {
+        File dir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        File file = new File(dir, "perfil_" + System.currentTimeMillis() + ".jpg");
+        pendingCameraUri = FileProvider.getUriForFile(
+                this,
+                "com.example.homeservice.fileprovider",  // debe coincidir con tu <provider> en el Manifest
+                file
+        );
+        Intent i = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        i.putExtra(MediaStore.EXTRA_OUTPUT, pendingCameraUri);
+        cameraLauncher.launch(i);
+    }
+
 
 
     /*                CARGAR DATOS             */
@@ -114,21 +186,6 @@ public class EditarPerfilActivity extends AppCompatActivity {
                 });
     }
 
-
-    /*          SELECCIONAR NUEVA FOTO         */
-
-    private void seleccionarFoto() {
-        String permiso = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-                ? Manifest.permission.READ_MEDIA_IMAGES
-                : Manifest.permission.READ_EXTERNAL_STORAGE;
-
-        if (ContextCompat.checkSelfPermission(this, permiso)
-                == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            galeriaLauncher.launch("image/*");
-        } else {
-            permisoGaleriaLauncher.launch(permiso);
-        }
-    }
 
 
     /*              GUARDAR CAMBIOS            */

@@ -70,5 +70,10 @@
         <item name="cornerSize">24dp</item>
     </style>
 
+    <style name="ShapeAppearance.HomeService.Circle" parent="">
+        <item name="cornerFamily">rounded</item>
+        <!-- 50% hace un círculo perfecto cuando ancho == alto -->
+        <item name="cornerSize">50%</item>
+    </style>
 
 </resources>

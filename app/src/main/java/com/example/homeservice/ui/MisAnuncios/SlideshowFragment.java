@@ -15,6 +15,7 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.homeservice.interfaz.OnAnuncioLongClickListener;
 import com.example.homeservice.interfaz.OnFavoriteToggleListener;
 import com.example.homeservice.ui.Anuncios.DetalleAnuncioActivity;
 import com.example.homeservice.R;
@@ -22,14 +23,16 @@ import com.example.homeservice.adapter.AnuncioAdapter;
 import com.example.homeservice.interfaz.OnAnuncioClickListener;
 import com.example.homeservice.database.FirestoreHelper;
 import com.example.homeservice.model.Anuncio;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class SlideshowFragment extends Fragment
-        implements OnAnuncioClickListener, OnFavoriteToggleListener {
+        implements OnAnuncioClickListener, OnFavoriteToggleListener, OnAnuncioLongClickListener {
 
     private ProgressBar progressBar;
     private RecyclerView recyclerView;
@@ -47,12 +50,42 @@ public class SlideshowFragment extends Fragment
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
         // 1) Creamos el adaptador pasándole 'this' para ambos listeners:
-        adapter = new AnuncioAdapter(listaAnuncios, this, this);
+        adapter = new AnuncioAdapter(listaAnuncios, this, this, this);
         recyclerView.setAdapter(adapter);
 
         cargarMisAnuncios();
         return root;
     }
+
+    @Override
+    public void onAnuncioLongClick(Anuncio anuncio) {
+        new MaterialAlertDialogBuilder(requireContext(), R.style.ThemeOverlay_HomeService_Dialog)
+                .setTitle("Eliminar anuncio")
+                .setMessage("¿Estás seguro de que quieres borrar este anuncio?")
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton("Sí, borrar", (d, w) -> {
+                    String adId = anuncio.getId();
+                    FirebaseFirestore.getInstance()
+                            .collection("anuncios")
+                            .document(adId)
+                            .delete()
+                            .addOnSuccessListener(v -> {
+                                // lo quitamos de la lista y refrescamos
+                                listaAnuncios.remove(anuncio);
+                                adapter.notifyDataSetChanged();
+                                Toast.makeText(getContext(),
+                                        "Anuncio eliminado",
+                                        Toast.LENGTH_SHORT).show();
+                            })
+                            .addOnFailureListener(e ->
+                                    Toast.makeText(getContext(),
+                                            "Error al eliminar: " + e.getMessage(),
+                                            Toast.LENGTH_LONG).show()
+                            );
+                })
+                .show();
+    }
+
 
     private void cargarMisAnuncios() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();

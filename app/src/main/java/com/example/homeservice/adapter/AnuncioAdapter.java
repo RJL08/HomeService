@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.example.homeservice.R;
 import com.example.homeservice.interfaz.OnAnuncioClickListener;
+import com.example.homeservice.interfaz.OnAnuncioLongClickListener;
 import com.example.homeservice.interfaz.OnFavoriteToggleListener;
 import com.example.homeservice.model.Anuncio;
 
@@ -27,6 +28,7 @@ public class AnuncioAdapter extends RecyclerView.Adapter<AnuncioAdapter.AnuncioV
     private OnAnuncioClickListener listener;
     private OnFavoriteToggleListener favoriteListener;
     private static final int MAX_DESC_LENGTH = 20;
+    private final OnAnuncioLongClickListener longClickListener;
 
 
     /**
@@ -34,10 +36,17 @@ public class AnuncioAdapter extends RecyclerView.Adapter<AnuncioAdapter.AnuncioV
      */
     public AnuncioAdapter(List<Anuncio> listaAnuncios,
                           OnAnuncioClickListener listener,
-                          OnFavoriteToggleListener favoriteListener) {
+                          OnFavoriteToggleListener favoriteListener, OnAnuncioLongClickListener longClickListener) {
         this.listaAnuncios = listaAnuncios;
         this.listener = listener;
         this.favoriteListener = favoriteListener;
+        this.longClickListener = longClickListener;
+    }
+
+    public AnuncioAdapter(List<Anuncio> lista,
+                          OnAnuncioClickListener click,
+                          OnFavoriteToggleListener fav) {
+        this(lista, click, fav, anuncio -> { /* no-op */ });
     }
 
     @NonNull
@@ -97,6 +106,12 @@ public class AnuncioAdapter extends RecyclerView.Adapter<AnuncioAdapter.AnuncioV
                 holder.ivFavorite.setImageResource(R.drawable.favoritos);
                 if (favoriteListener != null) favoriteListener.onFavoriteAdded(anuncio);
             }
+        });
+
+        // long-click:
+        holder.itemView.setOnLongClickListener(v -> {
+            longClickListener.onAnuncioLongClick(anuncio);
+            return true;
         });
 
         // Clic en todo el item para abrir detalle
