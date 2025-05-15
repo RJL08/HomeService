@@ -85,6 +85,8 @@ public class NotificacionesActivity extends AppCompatActivity implements Notific
 
     private void cargarConversaciones() {
         String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        FirestoreHelper helper = new FirestoreHelper();
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
 
         FirebaseFirestore.getInstance()
                 .collection("conversaciones")
@@ -103,7 +105,7 @@ public class NotificacionesActivity extends AppCompatActivity implements Notific
                         Conversation conv = doc.toObject(Conversation.class);
                         if (conv == null) continue;
                         conv.setId(doc.getId());
-
+                        // ¿Está oculto? (solo para mi) PUNTO ROJO
                         List<String> ocultado = conv.getOcultadoPara();
                         if (ocultado != null && ocultado.contains(currentUserId)) {
                             continue;  // no la añadimos
@@ -123,6 +125,40 @@ public class NotificacionesActivity extends AppCompatActivity implements Notific
                                 Log.w("Notificaciones", "No se pudo descifrar lastMessage", e);
                             }
                         }
+
+                        // 4) Calcula el ID del otro usuario
+                        String otherUserId = conv.getParticipants().get(0).equals(currentUserId)
+                                ? conv.getParticipants().get(1)
+                                : conv.getParticipants().get(0);
+
+
+                        // 6) **Lee título del anuncio** (asíncrono)
+                        String adId = conv.getAdId();
+                        db.collection("anuncios").document(adId)
+                                .get().addOnSuccessListener(adDoc -> {
+                                    if (adDoc.exists()) {
+                                        String encTitle = adDoc.getString("titulo");
+                                        try {
+                                            String title = CommonCrypto.decrypt(encTitle);
+                                            conv.setAdTitle(title);
+                                        } catch (Exception e3) {
+                                            Log.w("Notificaciones","no decrypt ad title",e3);
+                                        }
+                                        String encCity = adDoc.getString("localizacion");
+                                        if (encCity != null) {
+                                            try {
+                                                // desempaca y asigna al mismo campo que usas en el adapter
+                                                conv.setOtherUserName(CommonCrypto.decrypt(encCity));
+                                            } catch (Exception e2) {
+                                                conv.setOtherUserName(encCity);
+                                            }
+                                        }
+                                        adapter.notifyDataSetChanged();
+                                    }
+                                }).addOnFailureListener(e4 ->
+                                        Log.w("Notificaciones","no pudo leer anuncio",e4)
+                                );
+
 
                         // … resto de tu lógica (título del anuncio, etc.) …
                         conversationList.add(conv);

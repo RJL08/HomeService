@@ -30,6 +30,7 @@ import com.example.homeservice.MainActivity;
 import com.example.homeservice.R;
 import com.example.homeservice.database.FirestoreHelper;
 import com.example.homeservice.model.Anuncio;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.storage.FirebaseStorage;
@@ -290,12 +291,57 @@ public class PublicarAnuncio extends AppCompatActivity {
 
     private void agregarImagenAlContenedor(Uri uri) {
         ImageView nuevaImagen = new ImageView(this);
-        nuevaImagen.setLayoutParams(new LinearLayout.LayoutParams(200, 200));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(200, 200);
+        lp.setMargins(8, 8, 8, 8);
+        nuevaImagen.setLayoutParams(lp);
         nuevaImagen.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        nuevaImagen.setPadding(8, 8, 8, 8);
-
         nuevaImagen.setImageURI(uri);
-        contenedorImagenes.addView(nuevaImagen, contenedorImagenes.getChildCount());
+
+        // 1) Guarda el uri como tag
+        nuevaImagen.setTag(uri);
+
+        // 2) Long-click para borrar
+        nuevaImagen.setOnLongClickListener(v -> {
+            new MaterialAlertDialogBuilder(this)
+                    .setTitle("Eliminar imagen")
+                    .setMessage("¿Seguro que quieres quitar esta imagen?")
+                    .setNegativeButton("Cancelar", null)
+                    .setPositiveButton("Eliminar", (dialog, which) -> {
+                        // quita la Uri de la lista
+                        imagenesSeleccionadas.remove(uri);
+                        // quita la vista del layout
+                        contenedorImagenes.removeView(v);
+                    })
+                    .show();
+            return true;  // consume el evento
+        });
+
+        contenedorImagenes.addView(nuevaImagen);
+    }
+
+
+    // metodos para guardar y recuperar imagenes en el onSaveInstanceState al girar el telefono
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        // Uri implementan Parcelable
+        outState.putParcelableArrayList(
+                "imgs", new ArrayList<>(imagenesSeleccionadas)
+        );
+    }
+
+    @Override
+    protected void onRestoreInstanceState(@NonNull Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        ArrayList<Uri> guardadas = savedInstanceState.getParcelableArrayList("imgs");
+        if (guardadas != null) {
+            imagenesSeleccionadas.clear();
+            contenedorImagenes.removeAllViews();
+            for (Uri uri : guardadas) {
+                imagenesSeleccionadas.add(uri);
+                agregarImagenAlContenedor(uri);
+            }
+        }
     }
 
     // =====================

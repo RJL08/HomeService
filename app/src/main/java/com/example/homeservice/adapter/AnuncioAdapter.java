@@ -26,6 +26,8 @@ public class AnuncioAdapter extends RecyclerView.Adapter<AnuncioAdapter.AnuncioV
     private List<Anuncio> listaAnuncios;
     private OnAnuncioClickListener listener;
     private OnFavoriteToggleListener favoriteListener;
+    private static final int MAX_DESC_LENGTH = 20;
+
 
     /**
      * Constructor que recibe la lista de anuncios y los listeners.
@@ -53,8 +55,18 @@ public class AnuncioAdapter extends RecyclerView.Adapter<AnuncioAdapter.AnuncioV
         holder.tvTitulo.setText(anuncio.getTitulo());
         holder.tvOficio.setText(anuncio.getOficio());
         holder.tvLocalizacion.setText(anuncio.getLocalizacion());
-        holder.tvDescripcion.setText(anuncio.getDescripcion());
-
+        //holder.tvDescripcion.setText(anuncio.getDescripcion());
+        // truncamos la descripción a MAX_DESC_LENGTH caracteres
+        String fullDesc = anuncio.getDescripcion() != null
+                ? anuncio.getDescripcion()
+                : "";
+        String shortDesc;
+        if (fullDesc.length() > MAX_DESC_LENGTH) {
+            shortDesc = fullDesc.substring(0, MAX_DESC_LENGTH) + "...";
+        } else {
+            shortDesc = fullDesc;
+        }
+        holder.tvDescripcion.setText(shortDesc);
 
         // Carga de imagen principal
         if (!anuncio.getListaImagenes().isEmpty()) {

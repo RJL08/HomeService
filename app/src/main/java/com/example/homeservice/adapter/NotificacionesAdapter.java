@@ -47,12 +47,19 @@ public class NotificacionesAdapter extends RecyclerView.Adapter<NotificacionesAd
         holder.vUnreadDot.setVisibility(conv.isUnread() ? View.VISIBLE : View.GONE);
 
         // 1) Título del anuncio (o fallback a “Chat”)
-        String title = conv.getAdTitle() != null
+
+        String adTitle = conv.getAdTitle() != null
                 ? conv.getAdTitle()
-                : (conv.getOtherUserName() != null
-                ? conv.getOtherUserName()
-                : "Chat");
-        holder.tvOtherUserName.setText(title);
+                : "Sin título";
+        holder.tvAdTitle.setText(adTitle);
+
+        //  Nombre del otro usuario
+        // 2) Nombre del otro usuario
+        holder.tvOtherUserName.setText(
+                conv.getOtherUserName() != null
+                        ? conv.getOtherUserName()
+                        : "Desconocido"
+        );
 
         // 2) Último mensaje (ya descifrado en la Activity)
         holder.tvLastMessage.setText(
@@ -96,7 +103,7 @@ public class NotificacionesAdapter extends RecyclerView.Adapter<NotificacionesAd
     }
 
     static class ConvViewHolder extends RecyclerView.ViewHolder {
-        TextView tvOtherUserName, tvLastMessage, tvTimestamp;
+        TextView tvOtherUserName, tvLastMessage, tvTimestamp,  tvAdTitle;
         View     vUnreadDot;
 
         public ConvViewHolder(@NonNull View itemView) {
@@ -105,6 +112,7 @@ public class NotificacionesAdapter extends RecyclerView.Adapter<NotificacionesAd
             tvLastMessage   = itemView.findViewById(R.id.tvLastMessage);
             tvTimestamp     = itemView.findViewById(R.id.tvTimestamp);
             vUnreadDot      = itemView.findViewById(R.id.vUnreadDot);
+            tvAdTitle         = itemView.findViewById(R.id.tvAdTitle);
         }
     }
 }

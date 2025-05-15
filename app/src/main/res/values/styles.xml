@@ -45,4 +45,30 @@
         <item name="buttonStyle">@style/Widget.HomeService.Dialog.Button</item>
     </style>
 
+
+    <!-- 2· Estilo del botón “Categorías” -->
+    <style name="Widget.HomeService.Button.Categorias"
+        parent="Widget.MaterialComponents.Button">
+        <!-- Fondo amarillo mate -->
+        <item name="backgroundTint">@color/edit_profile_bg</item>
+        <!-- Texto en negrita y color de marca -->
+        <item name="android:textColor">@color/logo_background</item>
+        <item name="android:textStyle">bold</item>
+        <!-- Icono del mismo color que el texto -->
+        <item name="iconTint">@color/logo_background</item>
+        <!-- Borde de 2dp en color de marca -->
+        <item name="strokeColor">@color/logo_background</item>
+        <item name="strokeWidth">2dp</item>
+        <!-- Aplica la forma redondeada en todos los lados -->
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearance.HomeService.CatButtonRounded</item>
+    </style>
+
+    <!-- ShapeAppearance para esquinas laterales redondeadas -->
+    <!-- 1· Shape para botón “Categorías”: esquinas de 24dp por todos lados -->
+    <style name="ShapeAppearance.HomeService.CatButtonRounded" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">24dp</item>
+    </style>
+
+
 </resources>
