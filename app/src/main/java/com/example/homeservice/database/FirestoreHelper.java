@@ -468,6 +468,50 @@ public class FirestoreHelper {
                 .addOnSuccessListener(alExito)
                 .addOnFailureListener(alError);
     }
+
+    /** Actualiza un anuncio existente cifrando sus campos */
+    public void actualizarAnuncioCifrado(
+            String adId,
+            Anuncio a,
+            OnSuccessListener<Void> onSuccess,
+            OnFailureListener onFailure
+    ) {
+        Map<String,Object> datos = new HashMap<>();
+        try {
+            datos.put("titulo",       CommonCrypto.encrypt(a.getTitulo()));
+            datos.put("descripcion",  CommonCrypto.encrypt(a.getDescripcion()));
+            datos.put("oficio",       CommonCrypto.encrypt(a.getOficio()));
+            datos.put("localizacion", CommonCrypto.encrypt(a.getLocalizacion()));
+            datos.put("latitud",      CommonCrypto.encrypt(Double.toString(a.getLatitud())));
+            datos.put("longitud",     CommonCrypto.encrypt(Double.toString(a.getLongitud())));
+            List<String> imgsEnc = new ArrayList<>();
+            for (String url : a.getListaImagenes()) {
+                imgsEnc.add(CommonCrypto.encrypt(url));
+            }
+            datos.put("listaImagenes", imgsEnc);
+        } catch (Exception e) {
+            // fallback en claro si falla cifrado
+            datos.clear();
+            datos.put("titulo",       a.getTitulo());
+            datos.put("descripcion",  a.getDescripcion());
+            datos.put("oficio",       a.getOficio());
+            datos.put("localizacion", a.getLocalizacion());
+            datos.put("latitud",      a.getLatitud());
+            datos.put("longitud",     a.getLongitud());
+            datos.put("listaImagenes",a.getListaImagenes());
+        }
+
+        // Mantén también userId y fechaPublicacion si no quieres cambiarlos
+        datos.put("userId",           a.getUserId());
+        datos.put("fechaPublicacion", a.getFechaPublicacion());
+
+        db.collection("anuncios")
+                .document(adId)
+                .set(datos, SetOptions.merge())
+                .addOnSuccessListener(onSuccess)
+                .addOnFailureListener(onFailure);
+    }
+
 }
 
 
