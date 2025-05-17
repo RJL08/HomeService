@@ -7,17 +7,14 @@ import android.os.Build;
 import android.util.Log;
 
 import androidx.activity.result.ActivityResultCaller;
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.core.content.ContextCompat;
-import androidx.fragment.app.Fragment;
+
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.SetOptions;
 
-import java.util.Collections;
+
+
 
 public class GestorNotificaciones {
 

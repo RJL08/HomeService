@@ -81,7 +81,8 @@
                     android:textStyle="bold"
                     android:layout_marginTop="16dp"
                     android:clickable="true"
-                    android:focusable="true"/>
+                    android:focusable="true"
+                    app:endIconMode="password_toggle"/>
 
 
 

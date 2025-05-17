@@ -3,18 +3,16 @@ package com.example.homeservice.notificaciones;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.ContentResolver;
 import android.content.Intent;
 import android.media.AudioAttributes;
 import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Build;
-import android.util.Log;
 import android.widget.RemoteViews;
-
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
-
 import com.example.homeservice.R;
-import com.example.homeservice.seguridad.CommonCrypto;
 import com.example.homeservice.ui.chat.ChatActivity;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
@@ -24,6 +22,7 @@ import java.util.Map;
 public class ServicioFirebase extends FirebaseMessagingService {
 
     private static final String CANAL_CHAT = "canal_chat";
+    private Uri sonidoUri;
 
     @Override
     public void onMessageReceived(@NonNull RemoteMessage msg) {
@@ -60,7 +59,8 @@ public class ServicioFirebase extends FirebaseMessagingService {
                 .setAutoCancel(true)
                 .setGroup(convId)
                 .setGroupSummary(false)
-                .setPriority(NotificationCompat.PRIORITY_HIGH);
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setSound(sonidoUri);
 
         NotificationManager nm = getSystemService(NotificationManager.class);
         int notificationId = (int) System.currentTimeMillis();
@@ -78,6 +78,7 @@ public class ServicioFirebase extends FirebaseMessagingService {
                 .setGroupSummary(true)
                 .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_HIGH);
+
 
         NotificationManager nm = getSystemService(NotificationManager.class);
         nm.notify(convId.hashCode() + 1, summary.build());
@@ -112,6 +113,11 @@ public class ServicioFirebase extends FirebaseMessagingService {
                 .setUsage(AudioAttributes.USAGE_NOTIFICATION_COMMUNICATION_INSTANT)
                 .build();
 
+        sonidoUri = Uri.parse(
+                ContentResolver.SCHEME_ANDROID_RESOURCE + "://"
+                        + getPackageName() + "/" + R.raw.notificaciones
+        );
+
         NotificationChannel canal = new NotificationChannel(
                 CANAL_CHAT,
                 "Chats",
@@ -123,6 +129,7 @@ public class ServicioFirebase extends FirebaseMessagingService {
                 atr
         );
         canal.enableVibration(true);
+        canal.setSound(sonidoUri, atr);
         nm.createNotificationChannel(canal);
     }
 }
