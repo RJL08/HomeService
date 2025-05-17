@@ -1,5 +1,6 @@
 package com.example.homeservice.ui.chat;
 
+import android.content.SharedPreferences;
 import android.media.SoundPool;
 import android.os.Bundle;
 import android.util.Log;
@@ -8,6 +9,7 @@ import android.widget.EditText;
 import android.widget.Toast;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.homeservice.R;
@@ -49,6 +51,9 @@ public class ChatActivity extends AppCompatActivity {
             keystore = null;
             Log.w("ChatActivity", "No se pudo inicializar Keystore", e);
         }
+        //leemos las preferencias de los sonidods
+        SharedPreferences prefs = PreferenceManager
+                .getDefaultSharedPreferences(this);
 
         recyclerView = findViewById(R.id.recyclerViewChat);
         etMensaje    = findViewById(R.id.etMensaje);
@@ -75,12 +80,17 @@ public class ChatActivity extends AppCompatActivity {
 
         cargarMensajes();
         btnEnviar.setOnClickListener(v -> {
-            soundPool.play(sendSoundId,
-                    /*leftVolume=*/ 1f,    // este 1f va para leftVolume
-                    /*rightVolume=*/ 1f,   // este para rightVolume
-                    /*priority=*/ 0,       // este para priority
-                    /*loop=*/ 0,           // este para loop
-                    /*rate=*/ 1f);           // y éste para rate
+            // 1) Solo reproducir si “sonidos_activados” == true
+            if (prefs.getBoolean("sonidos_activados", true)) {
+                soundPool.play(
+                        sendSoundId,
+                        /*leftVolume=*/ 1f,
+                        /*rightVolume=*/ 1f,
+                        /*priority=*/ 0,
+                        /*loop=*/ 0,
+                        /*rate=*/ 1f
+                );
+            }
             enviarMensaje();
         });
 

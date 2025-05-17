@@ -41,4 +41,21 @@ public class GestorNotificaciones {
                 );
     }
 
+    // 5.3 – Nuevo método para QUITAR el token si el usuario desactiva notificaciones
+    public static void eliminarTokenDeFirestore(String token) {
+        String uid = FirebaseAuth.getInstance().getUid();
+        if (uid == null) return;
+        FirebaseFirestore.getInstance()
+                .collection("usuarios")
+                .document(uid)
+                .update("fcmTokens", FieldValue.arrayRemove(token))
+                .addOnSuccessListener(aVoid ->
+                        Log.d("Firestore", "Token eliminado del array")
+                )
+                .addOnFailureListener(e ->
+                        Log.e("Firestore", "Error al eliminar token", e)
+                );
+    }
+
+
 }

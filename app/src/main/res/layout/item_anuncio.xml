@@ -34,7 +34,9 @@
                 android:layout_height="wrap_content"
                 android:text="Título del anuncio"
                 android:textStyle="bold"
-                android:textSize="18sp"/>
+                android:textSize="18sp"
+                android:textColor="?attr/colorOnSurface"
+                />
 
             <TextView
                 android:id="@+id/tvOficio"
@@ -42,14 +44,17 @@
                 android:layout_height="wrap_content"
                 android:text="Oficio"
                 android:textSize="14sp"
-                android:textColor="#666666"/>
+                android:textColor="?attr/colorOnSurface"
+                />
 
             <TextView
                 android:id="@+id/tvLocalizacion"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Ciudad"
-                android:textSize="14sp"/>
+                android:textSize="14sp"
+                android:textColor="?attr/colorOnSurface"
+                />
 
             <TextView
                 android:id="@+id/tvDist"
@@ -57,8 +62,9 @@
                 android:layout_height="wrap_content"
                 android:text="0.0 km"
                 android:textSize="13sp"
-                android:textColor="@color/black"
-                android:visibility="gone"  />
+                android:visibility="gone"
+                android:textColor="?attr/colorOnSurface"
+                />
 
             <TextView
                 android:id="@+id/tvDescripcion"
@@ -67,7 +73,9 @@
                 android:text="Descripción..."
                 android:textSize="14sp"
                 android:maxLines="3"
-                android:ellipsize="end"/>
+                android:ellipsize="end"
+                android:textColor="?attr/colorOnSurface"
+                />
 
             <ImageButton
                 android:id="@+id/ivFavorite"

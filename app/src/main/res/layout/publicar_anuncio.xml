@@ -29,7 +29,9 @@
         app:layout_constraintTop_toBottomOf="@id/etTitulo"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="16dp"/>
+        android:layout_marginTop="16dp"
+        app:popupTheme="@style/Widget.HomeService.ListPopupWindow"
+        />
 
     <!-- Campo para la ciudad/localización -->
     <!-- Campo de solo lectura para mostrar la ubicación -->
@@ -76,7 +78,8 @@
                 android:background="@drawable/border_background"
                 android:src="@drawable/ic_add"
                 android:scaleType="center"
-                android:contentDescription="Agregar imagen"/>
+                android:contentDescription="Agregar imagen"
+                />
 
         </LinearLayout>
     </HorizontalScrollView>

@@ -20,14 +20,18 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
+import androidx.preference.PreferenceManager;
+
 import com.example.homeservice.databinding.ActivityMainBinding;
 import com.example.homeservice.ui.Publicar.PublicarAnuncio;
 import com.example.homeservice.ui.chat.NotificacionesActivity;
+import com.example.homeservice.ui.menu.AjustesActivity;
 import com.example.homeservice.ui.perfil.EditarPerfilActivity;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.tasks.Task;
@@ -69,6 +73,14 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // ★ Cargar modo oscuro desde SharedPreferences
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        boolean oscuro = prefs.getBoolean("modo_oscuro", false);
+        AppCompatDelegate.setDefaultNightMode(
+                oscuro ? AppCompatDelegate.MODE_NIGHT_YES
+                        : AppCompatDelegate.MODE_NIGHT_NO
+        );
 
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
@@ -195,6 +207,10 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == R.id.action_edit_profile) {
             startActivity(new Intent(this, EditarPerfilActivity.class));
+            return true;
+        }
+        if (item.getItemId() == R.id.accion_ajustes) {
+            startActivity(new Intent(this, AjustesActivity.class));
             return true;
         }
         return super.onOptionsItemSelected(item);

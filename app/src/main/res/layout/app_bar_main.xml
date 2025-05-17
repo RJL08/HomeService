@@ -17,9 +17,11 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:background="@color/logo_background"
-            app:popupTheme="@style/Theme.HomeService.PopupOverlay"
             app:layout_scrollFlags="scroll|enterAlways"
-            app:titleTextColor="@android:color/white"/>
+            app:titleTextColor="@android:color/white"
+            app:popupTheme="@style/Widget.HomeService.PopupMenu"
+
+            />
     </com.google.android.material.appbar.AppBarLayout>
 
     <!-- Contenedor del NavHostFragment (tu Home/Gallery/etc.) -->

@@ -54,6 +54,7 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.play.services.location)
     implementation(libs.firebase.messaging)
+    implementation(libs.preference)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
@@ -74,5 +75,6 @@ dependencies {
     implementation ("com.google.firebase:firebase-analytics")
     implementation ("com.google.firebase:firebase-functions-ktx")
     implementation ("com.google.android.material:material:1.12.0")
+    implementation ("androidx.preference:preference:1.2.0")
 }
 

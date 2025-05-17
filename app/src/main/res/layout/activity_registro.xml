@@ -95,7 +95,8 @@
             app:boxCornerRadiusTopEnd="24dp"
             app:boxCornerRadiusBottomStart="24dp"
             app:boxCornerRadiusBottomEnd="24dp"
-            android:hint="Contraseña">
+            android:hint="Contraseña"
+            app:endIconMode="password_toggle">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etContrasenaRegistro"
@@ -114,7 +115,8 @@
             app:boxCornerRadiusTopEnd="24dp"
             app:boxCornerRadiusBottomStart="24dp"
             app:boxCornerRadiusBottomEnd="24dp"
-            android:hint="Repetir contraseña">
+            android:hint="Repetir contraseña"
+            app:endIconMode="password_toggle">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etRepetirContrasena"

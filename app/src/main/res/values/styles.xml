@@ -1,6 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <!-- 0 · Tu tema principal, sin ActionBar -->
+    <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Desactiva la ActionBar que viene por defecto -->
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+
+        <!-- Tus colores habituales -->
+        <item name="colorPrimary">@color/logo_background</item>
+        <item name="colorOnPrimary">@android:color/white</item>
+        <item name="colorSecondary">@color/teal_700</item>
+        <!-- … cualquier otra personalización que ya tuvieras … -->
+    </style>
+
 
     <!-- Shape overlay con esquinas de 16 dp -->
     <style name="ShapeAppearance.HomeService.Rounded16" parent="">
@@ -79,5 +92,17 @@
         <item name="cornerSize">50%</item>
     </style>
 
+
+    <style name="Widget.HomeService.PopupMenu" parent="Widget.MaterialComponents.PopupMenu">
+        <!-- colorSurface ya es oscuro en modo night -->
+        <item name="android:popupBackground">?attr/colorSurface</item>
+        <item name="android:textColor">@android:color/white</item>
+    </style>
+
+    <!-- listas desplegables (categorías, AutoCompleteTextView...) -->
+    <style name="Widget.HomeService.ListPopupWindow" parent="Widget.AppCompat.ListView.DropDown">
+        <item name="android:popupBackground">?attr/colorSurface</item>
+        <item name="android:textColor">@android:color/white</item>
+    </style>
 
 </resources>

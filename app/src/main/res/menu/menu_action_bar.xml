@@ -8,5 +8,11 @@
         android:icon="@drawable/settings"
         app:showAsAction="always" />
 
+    <item
+        android:id="@+id/accion_ajustes"
+        android:title="Ajustes"
+        app:showAsAction="never"
+
+        />
 
 </menu>

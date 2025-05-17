@@ -56,7 +56,8 @@
         <!-- REGISTRO ACTIVITY -->
         <activity
             android:name=".Registro"
-            android:exported="true" />
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize|stateHidden"/>
 
         <activity
             android:name=".ui.chat.ChatActivity"
@@ -77,6 +78,11 @@
 
         <activity
             android:name=".ui.perfil.EditarPerfilActivity"
+            android:exported="true"
+            />
+
+        <activity
+            android:name=".ui.menu.AjustesActivity"
             android:exported="true"
             />
 

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <SwitchPreferenceCompat
+        android:key="modo_oscuro"
+        android:title="Modo oscuro"
+        android:defaultValue="false"
+        android:summaryOff="Tema claro"
+        android:summaryOn="Tema oscuro" />
+
+    <SwitchPreferenceCompat
+        android:key="sonidos_activados"
+        android:title="Sonidos"
+        android:defaultValue="true"
+        android:summaryOff="Silenciados"
+        android:summaryOn="Activados" />
+
+    <SwitchPreferenceCompat
+        android:key="notificaciones_activadas"
+        android:title="Notificaciones"
+        android:defaultValue="true"
+        android:summaryOff="Desactivadas"
+        android:summaryOn="Activadas" />
+
+</PreferenceScreen>
