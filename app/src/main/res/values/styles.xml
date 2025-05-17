@@ -70,10 +70,14 @@
         <item name="cornerSize">24dp</item>
     </style>
 
-    <style name="ShapeAppearance.HomeService.Circle" parent="">
+
+    <style name="ShapeAppearance.HomeService.Circle"
+        parent="ShapeAppearance.MaterialComponents.SmallComponent">
+        <!-- cornerFamily rounded para activar las esquinas redondeadas -->
         <item name="cornerFamily">rounded</item>
-        <!-- 50% hace un círculo perfecto cuando ancho == alto -->
+        <!-- 50% convierte un  width==height en un círculo -->
         <item name="cornerSize">50%</item>
     </style>
+
 
 </resources>

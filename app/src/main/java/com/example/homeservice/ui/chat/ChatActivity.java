@@ -1,5 +1,6 @@
 package com.example.homeservice.ui.chat;
 
+import android.media.SoundPool;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Button;
@@ -31,7 +32,10 @@ public class ChatActivity extends AppCompatActivity {
     private Button btnEnviar;
     private String conversationId;
     private FirebaseFirestore db;
-    private KeystoreManager keystore;   // ← agrega esto
+    private KeystoreManager keystore;// ← agrega esto
+    // sound pool para sonidos cortos en ves de media Player
+    private SoundPool soundPool;
+    private int sendSoundId;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -51,7 +55,13 @@ public class ChatActivity extends AppCompatActivity {
         btnEnviar    = findViewById(R.id.btnEnviar);
         db           = FirebaseFirestore.getInstance();
 
-        mensajes = new ArrayList<>();
+        // 2.1 Inicializa SoundPool con un solo sonido
+        soundPool = new SoundPool.Builder()
+                .setMaxStreams(1)
+                .build();
+        sendSoundId = soundPool.load(this, R.raw.send,1);
+
+                mensajes = new ArrayList<>();
         adapter  = new ChatAdapter(mensajes);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(adapter);
@@ -64,11 +74,19 @@ public class ChatActivity extends AppCompatActivity {
         }
 
         cargarMensajes();
-        btnEnviar.setOnClickListener(v -> enviarMensaje());
+        btnEnviar.setOnClickListener(v -> {
+            soundPool.play(sendSoundId,
+                    /*leftVolume=*/ 1f,    // este 1f va para leftVolume
+                    /*rightVolume=*/ 1f,   // este para rightVolume
+                    /*priority=*/ 0,       // este para priority
+                    /*loop=*/ 0,           // este para loop
+                    /*rate=*/ 1f);           // y éste para rate
+            enviarMensaje();
+        });
 
-        cargarMensajes();
+        //cargarMensajes();
 
-        btnEnviar.setOnClickListener(v -> enviarMensaje());
+        //btnEnviar.setOnClickListener(v -> enviarMensaje());
     }
 
     private void cargarMensajes() {
@@ -180,5 +198,12 @@ public class ChatActivity extends AppCompatActivity {
                 .update("unreadFor", FieldValue.arrayRemove(myUid));
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Libera recursos
+        soundPool.release();
+        soundPool = null;
+    }
 
 }
