@@ -19,7 +19,7 @@
             android:text="Título del Servicio"
             android:textStyle="bold"
             android:textSize="16sp"
-            android:textColor="@android:color/black"/>
+            android:textColor="?attr/colorOnSurface"/>
 
         <!-- 2) Punto rojo si hay mensajes sin leer -->
         <View
@@ -40,7 +40,7 @@
             android:layout_height="wrap_content"
             android:text="Usuario"
             android:textSize="14sp"
-            android:textColor="#444444"
+            android:textColor="?attr/colorOnSurface"
             android:layout_marginTop="4dp"/>
 
         <!-- 4) Previsualización del último mensaje -->
@@ -52,7 +52,7 @@
             android:text="Sin mensajes"
             android:textSize="14sp"
             android:layout_marginTop="4dp"
-            android:textColor="#666666"/>
+            android:textColor="?attr/colorOnSurface"/>
 
         <!-- 5) Timestamp alineado a la derecha -->
         <TextView
@@ -63,7 +63,7 @@
             android:layout_height="wrap_content"
             android:text="12:34 PM"
             android:textSize="12sp"
-            android:textColor="#888888"/>
+            android:textColor="?attr/colorOnSurface"/>
 
     </RelativeLayout>
 </androidx.cardview.widget.CardView>

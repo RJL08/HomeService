@@ -22,4 +22,13 @@
 
 
     </style>
+
+    <style name="Widget.HomeService.PopupMenu"
+        parent="Widget.MaterialComponents.PopupMenu">
+        <item name="android:popupBackground">?attr/colorSurface</item>
+
+        <!-- Blanco en tema oscuro -->
+        <item name="android:textColor">@android:color/white</item>
+    </style>
+
 </resources>

@@ -224,23 +224,27 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void realizarLogout() {
-        // 1) Limpias SharedPreferences
-        SharedPreferences.Editor editor = getSharedPreferences("MyAppPrefs", MODE_PRIVATE).edit();
-        editor.clear();
-        editor.apply();
+        // 1) prefs
+        getSharedPreferences("MyAppPrefs", MODE_PRIVATE)
+                .edit().clear().apply();
 
-        // 2) signOut de Firebase
+        // 2) Firebase    → vale para mail, Google, Facebook, etc.
         FirebaseAuth.getInstance().signOut();
 
-        // 3) signOut de Google
-        GoogleSignIn.getClient(this, GoogleSignInOptions.DEFAULT_SIGN_IN).signOut()
-                .addOnCompleteListener(task -> {
-                    Intent signOutIntent = new Intent(MainActivity.this, Login.class);
-                    signOutIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                    startActivity(signOutIntent);
-                    finish();
-                });
+        // 3) Si el último login fue con Google, revoca el token
+        FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser(); // ya es null
+        if (GoogleSignIn.getLastSignedInAccount(this) != null) {
+            GoogleSignIn.getClient(this,
+                    GoogleSignInOptions.DEFAULT_SIGN_IN).signOut();
+        }
+
+        // 4) Vuelve a Login limpiando el back-stack
+        Intent i = new Intent(this, Login.class);
+        i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(i);
+        finish();
     }
+
 
     // ───────────────────────────────────────────────────────
 //  1) Muestra el diálogo “¿Seguro que quieres eliminar…?”

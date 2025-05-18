@@ -18,6 +18,11 @@ public class CommonCrypto {
 
     public static void init(SecretKey k){ KEY = k; }
 
+    private static void assertReady() throws IllegalStateException {
+        if (KEY == null)
+            throw new IllegalStateException("CommonCrypto KEY not initialised");
+    }
+
     public static String encrypt(String plain) throws Exception {
         Cipher c = Cipher.getInstance(T);
         c.init(Cipher.ENCRYPT_MODE, KEY, new SecureRandom());

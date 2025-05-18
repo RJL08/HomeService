@@ -93,16 +93,14 @@
     </style>
 
 
-    <style name="Widget.HomeService.PopupMenu" parent="Widget.MaterialComponents.PopupMenu">
-        <!-- colorSurface ya es oscuro en modo night -->
-        <item name="android:popupBackground">?attr/colorSurface</item>
-        <item name="android:textColor">@android:color/white</item>
-    </style>
+
 
     <!-- listas desplegables (categorías, AutoCompleteTextView...) -->
     <style name="Widget.HomeService.ListPopupWindow" parent="Widget.AppCompat.ListView.DropDown">
         <item name="android:popupBackground">?attr/colorSurface</item>
         <item name="android:textColor">@android:color/white</item>
     </style>
+
+
 
 </resources>

@@ -3,6 +3,7 @@ package com.example.homeservice.ui.Anuncios;
 import static android.content.Context.MODE_PRIVATE;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -228,7 +229,8 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
         }
         client.getLastLocation()
                 .addOnSuccessListener(location -> {
-                    if (location == null) return;
+                   // if (location == null) return;
+                    if (!isAdded() || location == null) return;
                     double lat = location.getLatitude();
                     double lon = location.getLongitude();
                     // Guardamos en SharedPreferences
@@ -237,7 +239,11 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
                     // Reverse-geocode con Geocoder:
                     String ciudad = "Desconocido";
                     try {
-                        List<Address> dirs = new Geocoder(requireContext(), Locale.getDefault())
+                        //List<Address> dirs = new Geocoder(requireContext(), Locale.getDefault())
+                          //      .getFromLocation(lat, lon, 1);
+                        List<Address> dirs = new Geocoder(
+                                /*ctx=*/ requireContext().getApplicationContext(),
+                                Locale.getDefault())
                                 .getFromLocation(lat, lon, 1);
                         if (!dirs.isEmpty()) {
                             Address a = dirs.get(0);
@@ -280,11 +286,17 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
 
 
     private void guardarCoords(double lat, double lon) {
-        SharedPreferences.Editor ed =
+        /*SharedPreferences.Editor ed =
                 requireContext().getSharedPreferences("MyAppPrefs", MODE_PRIVATE).edit();
         ed.putFloat("userLat", (float) lat);
         ed.putFloat("userLon", (float) lon);
-        ed.apply();
+        ed.apply();*/
+        Context appCtx = requireContext().getApplicationContext();
+        appCtx.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
+                .edit()
+                .putFloat("userLat", (float) lat)
+                .putFloat("userLon", (float) lon)
+                .apply();
     }
 
 

@@ -120,8 +120,12 @@ public class FirestoreHelper {
 
                             String latStr = CommonCrypto.decrypt(doc.getString("lat"));
                             String lonStr = CommonCrypto.decrypt(doc.getString("lon"));
-                            u.setLat(Double.parseDouble(latStr));
-                            u.setLon(Double.parseDouble(lonStr));
+                            u.setLat( safeDouble(doc, "lat")  != null
+                                    ? safeDouble(doc, "lat")
+                                    : Double.parseDouble(latStr) );
+                            u.setLon( safeDouble(doc, "lon")  != null
+                                    ? safeDouble(doc, "lon")
+                                    : Double.parseDouble(lonStr) );
                         } catch (Exception e) {
                             Log.w(TAG, "Error descifrando campos, uso valores en claro", e);
                             u.setNombre(       doc.getString("nombre"));
@@ -129,8 +133,11 @@ public class FirestoreHelper {
                             u.setCorreo(       doc.getString("correo"));
                             u.setLocalizacion( doc.getString("localizacion"));
                             u.setFotoPerfil(   doc.getString("fotoPerfil"));
-                            u.setLat(          doc.getDouble("lat"));
-                            u.setLon(          doc.getDouble("lon"));
+                            Double lat = safeDouble(doc, "latitud");
+                            Double lon = safeDouble(doc, "longitud");
+
+                            u.setLat ( lat != null ? lat : 0.0 );
+                            u.setLon( lon != null ? lon : 0.0 );
                         }
                     } else {
                         // Keystore no disponible: todo en claro
@@ -184,10 +191,14 @@ public class FirestoreHelper {
                             a.setOficio(CommonCrypto.decrypt(doc.getString("oficio")));
                             a.setLocalizacion(CommonCrypto.decrypt(doc.getString("localizacion")));
                             // lat/lon como String cifrado → descifrar y parsear
-                            String latStr = CommonCrypto.decrypt(doc.getString("latitud"));
-                            String lonStr = CommonCrypto.decrypt(doc.getString("longitud"));
-                            a.setLatitud(Double.parseDouble(latStr));
-                            a.setLongitud(Double.parseDouble(lonStr));
+                            String latStr = CommonCrypto.decrypt(doc.getString("lat"));
+                            String lonStr = CommonCrypto.decrypt(doc.getString("lon"));
+                            a.setLatitud( safeDouble(doc, "lat")  != null
+                                    ? safeDouble(doc, "lat")
+                                    : Double.parseDouble(latStr) );
+                            a.setLongitud( safeDouble(doc, "lon")  != null
+                                    ? safeDouble(doc, "lon")
+                                    : Double.parseDouble(lonStr) );
                             // lista de URLs
                             List<String> encImgs = (List<String>) doc.get("listaImagenes");
                             List<String> urls = new ArrayList<>();
@@ -203,9 +214,11 @@ public class FirestoreHelper {
                             a.setDescripcion(doc.getString("descripcion"));
                             a.setOficio(doc.getString("oficio"));
                             a.setLocalizacion(doc.getString("localizacion"));
-                            Object latF = doc.get("latitud"), lonF = doc.get("longitud");
-                            if (latF instanceof Number) a.setLatitud(((Number)latF).doubleValue());
-                            if (lonF instanceof Number) a.setLongitud(((Number)lonF).doubleValue());
+                            Double lat = safeDouble(doc, "lat");
+                            Double lon = safeDouble(doc, "long");
+
+                            a.setLatitud ( lat != null ? lat : 0.0 );
+                            a.setLongitud( lon != null ? lon : 0.0 );
                             a.setListaImagenes((List<String>) doc.get("listaImagenes"));
                         }
                         // campos no cifrados
@@ -363,8 +376,12 @@ public class FirestoreHelper {
 
                             String latStr = CommonCrypto.decrypt(d.getString("latitud"));
                             String lonStr = CommonCrypto.decrypt(d.getString("longitud"));
-                            a.setLatitud ( Double.parseDouble(latStr) );
-                            a.setLongitud( Double.parseDouble(lonStr) );
+                            a.setLatitud( safeDouble(d, "lat")  != null
+                                    ? safeDouble(d, "lat")
+                                    : Double.parseDouble(latStr) );
+                            a.setLongitud( safeDouble(d, "lon")  != null
+                                    ? safeDouble(d, "lon")
+                                    : Double.parseDouble(lonStr) );
 
                             List<String> urls = new ArrayList<>();
                             for (String enc : (List<String>) d.get("listaImagenes")) {
@@ -378,8 +395,10 @@ public class FirestoreHelper {
                             a.setDescripcion  ( d.getString("descripcion") );
                             a.setOficio       ( d.getString("oficio") );
                             a.setLocalizacion ( d.getString("localizacion") );
-                            a.setLatitud      ( d.getDouble("latitud") );
-                            a.setLongitud     ( d.getDouble("longitud") );
+                            Double lat = safeDouble(d, "lat");
+                            Double lon = safeDouble(d, "lon");
+                            a.setLatitud (lat != null ? lat : 0.0);
+                            a.setLongitud(lon != null ? lon : 0.0);
                             a.setListaImagenes( (List<String>) d.get("listaImagenes") );
                         }
 
@@ -393,6 +412,17 @@ public class FirestoreHelper {
                 });
     }
 
+    // ─────── helper para leer números de forma segura ─────────
+    private static Double safeDouble(DocumentSnapshot d, String key) {
+        Object v = d.get(key);
+        if (v instanceof Number)          // normal ⇒ Double, Long, etc.
+            return ((Number) v).doubleValue();
+        if (v instanceof String) {        // llegó cifrado o como texto
+            try { return Double.parseDouble((String) v); }
+            catch (NumberFormatException ignore) { }
+        }
+        return null;                      // campo ilegible
+    }
 
     /**
      * Busca si ya existe una conversación entre uid1 y uid2.
@@ -447,27 +477,6 @@ public class FirestoreHelper {
                 .addOnFailureListener(onFailure);
     }
 
-
-
-    /**
-     * Agrega un usuario a la lista de usuarios ocultos para una conversación.
-     * @param idConversacion id de la conversación
-     * @param idUsuario id del usuario a ocultar
-     * @param alExito onSuccess
-     * @param alError onFailure
-     */
-    public void ocultarConversacionParaUsuario(
-            String idConversacion,
-            String idUsuario,
-            OnSuccessListener<Void> alExito,
-            OnFailureListener alError
-    ) {
-        db.collection("conversaciones")
-                .document(idConversacion)
-                .update("ocultadoPara", FieldValue.arrayUnion(idUsuario))
-                .addOnSuccessListener(alExito)
-                .addOnFailureListener(alError);
-    }
 
     /** Actualiza un anuncio existente cifrando sus campos */
     public void actualizarAnuncioCifrado(
