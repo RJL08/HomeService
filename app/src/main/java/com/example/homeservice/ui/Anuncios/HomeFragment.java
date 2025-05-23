@@ -286,11 +286,7 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
 
 
     private void guardarCoords(double lat, double lon) {
-        /*SharedPreferences.Editor ed =
-                requireContext().getSharedPreferences("MyAppPrefs", MODE_PRIVATE).edit();
-        ed.putFloat("userLat", (float) lat);
-        ed.putFloat("userLon", (float) lon);
-        ed.apply();*/
+
         Context appCtx = requireContext().getApplicationContext();
         appCtx.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
                 .edit()

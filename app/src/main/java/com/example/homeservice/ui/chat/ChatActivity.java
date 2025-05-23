@@ -38,6 +38,7 @@ public class ChatActivity extends AppCompatActivity {
     // sound pool para sonidos cortos en ves de media Player
     private SoundPool soundPool;
     private int sendSoundId;
+    private String myUid;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -66,10 +67,16 @@ public class ChatActivity extends AppCompatActivity {
                 .build();
         sendSoundId = soundPool.load(this, R.raw.send,1);
 
+        myUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
+
                 mensajes = new ArrayList<>();
-        adapter  = new ChatAdapter(mensajes);
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        adapter  = new ChatAdapter(mensajes, myUid);
+        LinearLayoutManager llm = new LinearLayoutManager(this);
+        llm.setStackFromEnd(true);
+        recyclerView.setLayoutManager(llm);
+
         recyclerView.setAdapter(adapter);
+
 
         conversationId = getIntent().getStringExtra("conversationId");
         if (conversationId == null) {

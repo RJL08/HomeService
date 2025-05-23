@@ -15,6 +15,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
@@ -28,6 +29,7 @@ import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 import androidx.preference.PreferenceManager;
 
+import com.example.homeservice.database.FirestoreHelper;
 import com.example.homeservice.databinding.ActivityMainBinding;
 import com.example.homeservice.ui.Publicar.PublicarAnuncio;
 import com.example.homeservice.ui.chat.NotificacionesActivity;
@@ -82,10 +84,14 @@ public class MainActivity extends AppCompatActivity {
                         : AppCompatDelegate.MODE_NIGHT_NO
         );
 
+
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
+
+
         setSupportActionBar(binding.appBarMain.toolbar);
+
 
         // Crear canal **antes** de setContentView(...)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -173,12 +179,14 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        cargarDatosUsuarioEnCabecera(); // ★
+        cargarDatosUsuarioEnCabecera();
+
     }
 
     // ★ Método único para leer prefs y colocar datos en la cabecera
     private void cargarDatosUsuarioEnCabecera() { // ★
         SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
+
         String userName  = prefs.getString("userName",  "Invitado");
         String userEmail = prefs.getString("userEmail", "correo@ejemplo.com");
         String userPhoto = prefs.getString("userPhoto", "");
@@ -195,7 +203,9 @@ public class MainActivity extends AppCompatActivity {
         } else {
             profileImageView.setImageResource(R.drawable.ic_launcher_background);
         }
-    } //
+    }
+
+
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
