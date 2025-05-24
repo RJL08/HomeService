@@ -12,6 +12,8 @@ import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.example.homeservice.MyApp;
 import com.example.homeservice.R;
 import com.example.homeservice.adapter.FavoritosAdapter;
 import com.example.homeservice.interfaz.OnAnuncioClickListener;
@@ -78,7 +80,17 @@ public class GalleryFragment extends Fragment implements OnAnuncioClickListener 
         );
         recyclerView.setAdapter(adapter);
 
-        cargarFavoritos();
+        MyApp.getKeyReady().observe(getViewLifecycleOwner(), ready -> {
+            if (Boolean.TRUE.equals(ready)) {
+                cargarFavoritos();
+            } else {
+                Toast.makeText(requireContext(),
+                                "Error al inicializar clave de descifrado", Toast.LENGTH_LONG)
+                        .show();
+            }
+        });
+
+
 
         return root;
     }

@@ -3,6 +3,8 @@ package com.example.homeservice.database;
 
 
 import android.util.Log;
+import android.widget.Toast;
+
 import com.example.homeservice.model.Anuncio;
 import com.example.homeservice.model.Usuario;
 import com.example.homeservice.seguridad.CommonCrypto;
@@ -191,14 +193,22 @@ public class FirestoreHelper {
                             a.setOficio(CommonCrypto.decrypt(doc.getString("oficio")));
                             a.setLocalizacion(CommonCrypto.decrypt(doc.getString("localizacion")));
                             // lat/lon como String cifrado → descifrar y parsear
-                            String latStr = CommonCrypto.decrypt(doc.getString("lat"));
-                            String lonStr = CommonCrypto.decrypt(doc.getString("lon"));
-                            a.setLatitud( safeDouble(doc, "lat")  != null
-                                    ? safeDouble(doc, "lat")
-                                    : Double.parseDouble(latStr) );
-                            a.setLongitud( safeDouble(doc, "lon")  != null
-                                    ? safeDouble(doc, "lon")
-                                    : Double.parseDouble(lonStr) );
+                            Double latNum = safeDouble(doc, "latitud");
+                            Double lonNum = safeDouble(doc, "longitud");
+                            if (latNum != null && lonNum != null) {
+                                a.setLatitud(latNum);
+                                a.setLongitud(lonNum);
+                            } else {
+                                // si no había valor numérico, desciframos el String cifrado:
+                                String encLat = doc.getString("latitud");
+                                String encLon = doc.getString("longitud");
+                                if (encLat != null && encLon != null) {
+                                    String latStr = CommonCrypto.decrypt(encLat);
+                                    String lonStr = CommonCrypto.decrypt(encLon);
+                                    a.setLatitud(Double.parseDouble(latStr));
+                                    a.setLongitud(Double.parseDouble(lonStr));
+                                }
+                            }
                             // lista de URLs
                             List<String> encImgs = (List<String>) doc.get("listaImagenes");
                             List<String> urls = new ArrayList<>();
@@ -214,8 +224,8 @@ public class FirestoreHelper {
                             a.setDescripcion(doc.getString("descripcion"));
                             a.setOficio(doc.getString("oficio"));
                             a.setLocalizacion(doc.getString("localizacion"));
-                            Double lat = safeDouble(doc, "lat");
-                            Double lon = safeDouble(doc, "long");
+                            Double lat = safeDouble(doc, "latitud");
+                            Double lon = safeDouble(doc, "longitud");
 
                             a.setLatitud ( lat != null ? lat : 0.0 );
                             a.setLongitud( lon != null ? lon : 0.0 );

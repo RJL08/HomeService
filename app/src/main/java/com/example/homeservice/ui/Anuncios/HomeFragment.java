@@ -28,6 +28,7 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.homeservice.MyApp;
 import com.example.homeservice.R;
 import com.example.homeservice.interfaz.OnAnuncioClickListener;
 import com.example.homeservice.database.FirestoreHelper;
@@ -203,7 +204,7 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
             locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
         }
 
-
+        // se hostea la ip del emulador para reaalizar purebas con las notificaciones
         if (BuildConfig.DEBUG &&
                 (Build.FINGERPRINT.startsWith("generic")
                         || Build.MODEL.contains("Emulator")
@@ -213,6 +214,14 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
             FirebaseFunctions.getInstance().useEmulator("10.0.2.2", 5001);
         }
 
+        MyApp.getKeyReady().observe(getViewLifecycleOwner(), ready -> {
+            if (Boolean.TRUE.equals(ready)) {
+                cargarAnuncios();
+            } else {
+                Toast.makeText(requireContext(),
+                        "Error al inicializar clave de descifrado", Toast.LENGTH_LONG).show();
+            }
+        });
 
 
         return root;

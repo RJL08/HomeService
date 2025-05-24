@@ -4,6 +4,7 @@ package com.example.homeservice;
 import android.app.Application;
 import android.util.Log;
 
+import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.example.homeservice.seguridad.CommonCrypto;
@@ -30,5 +31,10 @@ public class MyApp extends Application {
                 KEY_READY.postValue(false);
             }
         });
+    }
+
+    /** Fragmentos y Activities pueden observar esto para saber cuándo CommonCrypto está listo */
+    public static LiveData<Boolean> getKeyReady() {
+        return KEY_READY;
     }
 }

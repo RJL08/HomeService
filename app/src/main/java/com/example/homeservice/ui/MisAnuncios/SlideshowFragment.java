@@ -15,6 +15,7 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.homeservice.MyApp;
 import com.example.homeservice.interfaz.OnAnuncioLongClickListener;
 import com.example.homeservice.interfaz.OnFavoriteToggleListener;
 import com.example.homeservice.ui.Anuncios.DetalleAnuncioActivity;
@@ -53,7 +54,16 @@ public class SlideshowFragment extends Fragment
         adapter = new AnuncioAdapter(listaAnuncios, this, this, this);
         recyclerView.setAdapter(adapter);
 
-        cargarMisAnuncios();
+
+
+        MyApp.getKeyReady().observe(getViewLifecycleOwner(), ready -> {
+            if (Boolean.TRUE.equals(ready)) {
+                cargarMisAnuncios();
+            } else {
+                Toast.makeText(requireContext(), "No se pudo inicializar clave de descifrado", Toast.LENGTH_LONG).show();
+                progressBar.setVisibility(View.GONE);
+            }
+        });
         return root;
     }
 
@@ -88,6 +98,7 @@ public class SlideshowFragment extends Fragment
 
 
     private void cargarMisAnuncios() {
+        progressBar.setVisibility(View.VISIBLE);
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) {
             Toast.makeText(getContext(), "No has iniciado sesión", Toast.LENGTH_SHORT).show();
