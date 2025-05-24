@@ -164,7 +164,7 @@ public class GalleryFragment extends Fragment implements OnAnuncioClickListener 
                                         }
                                         a.setListaImagenes((List<String>)doc.get("listaImagenes"));
                                     }
-
+                                    a.setUserId(doc.getString("userId"));
                                     favoritosList.add(a);
                                 }
                                 adapter.notifyDataSetChanged();
