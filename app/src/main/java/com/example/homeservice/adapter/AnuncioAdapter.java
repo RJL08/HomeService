@@ -10,6 +10,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.example.homeservice.R;
 import com.example.homeservice.interfaz.OnAnuncioClickListener;
 import com.example.homeservice.interfaz.OnAnuncioLongClickListener;
@@ -83,6 +84,8 @@ public class AnuncioAdapter extends RecyclerView.Adapter<AnuncioAdapter.AnuncioV
             Glide.with(holder.itemView.getContext())
                     .load(urlPrimera)
                     .placeholder(R.drawable.nophoto)
+                    .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)  // cache optimizado
+                    .thumbnail(0.1f)                                 // mini-thumbnail mientras carga
                     .into(holder.ivAnuncio);
         } else {
             holder.ivAnuncio.setImageResource(R.drawable.nophoto);

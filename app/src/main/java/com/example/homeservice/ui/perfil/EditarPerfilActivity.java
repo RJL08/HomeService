@@ -19,6 +19,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 
+import com.bumptech.glide.Glide;
 import com.example.homeservice.R;
 import com.example.homeservice.database.FirestoreHelper;
 import com.example.homeservice.model.Usuario;
@@ -282,4 +283,7 @@ public class EditarPerfilActivity extends AppCompatActivity {
         ed.putString("userPhoto", u.getFotoPerfil());
         ed.apply();
     }
+
+
+
 }

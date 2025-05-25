@@ -43,6 +43,7 @@ import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.functions.FirebaseFunctions;
 import com.google.firebase.ktx.BuildConfig;
 import com.google.firebase.messaging.FirebaseMessaging;
@@ -163,8 +164,6 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
 
         // ② Cache interno de views para evitar inflados constantes
         recyclerView.setItemViewCacheSize(20);
-// ② Cache interno de views para evitar inflados constantes
-        recyclerView.setItemViewCacheSize(20);
 
 
         // Inicializo la lista y el adapter con el listener de favoritos
@@ -193,7 +192,6 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
         );
         recyclerView.setAdapter(adapter);
 
-        recyclerView.setAdapter(adapter);
 
         // Botón de categorías
         btnCategorias = root.findViewById(R.id.btnCategorias);
@@ -380,6 +378,7 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
                         }
                     }
                     sincronizarFavoritos();   // mantienes favoritos + notifyDataSetChanged()
+                    adapter.notifyDataSetChanged();
                 },
                 e -> Toast.makeText(getContext(),
                         "Error: "+e.getMessage(), Toast.LENGTH_SHORT).show());
