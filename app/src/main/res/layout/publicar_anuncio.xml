@@ -79,6 +79,7 @@
                 android:src="@drawable/ic_add"
                 android:scaleType="center"
                 android:contentDescription="Agregar imagen"
+                app:tint="@color/teal_700"
                 />
 
         </LinearLayout>
