@@ -1,5 +1,6 @@
 package com.example.homeservice.ui.chat;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.media.SoundPool;
 import android.os.Bundle;
@@ -101,10 +102,26 @@ public class ChatActivity extends AppCompatActivity {
             enviarMensaje();
         });
 
-        //cargarMensajes();
-
-        //btnEnviar.setOnClickListener(v -> enviarMensaje());
+        // Maneja el intent inicial:
+        handleConversationIntent(getIntent());
     }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        // Si ya estaba abierta en el back-stack, hacemos que procese de nuevo:
+        setIntent(intent);
+        handleConversationIntent(intent);
+    }
+
+    private void handleConversationIntent(Intent intent) {
+        String convId = intent.getStringExtra("conversationId");
+        if (convId != null) {
+            // Carga tus mensajes aquí...
+            cargarMensajes();
+        }
+    }
+
 
     private void cargarMensajes() {
 

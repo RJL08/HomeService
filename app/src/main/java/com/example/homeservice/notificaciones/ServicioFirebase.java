@@ -88,12 +88,17 @@ public class ServicioFirebase extends FirebaseMessagingService {
     private PendingIntent buildConversationIntent(String convId) {
         Intent intent = new Intent(this, ChatActivity.class)
                 .putExtra("conversationId", convId)
-                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                // 🚀 Arranca siempre en nueva tarea, limpiando cualquier rastro de pantallas previas
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                        | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+
         return PendingIntent.getActivity(
                 this,
-                convId.hashCode(),
+                convId.hashCode(),   // requestCode único por conversación
                 intent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+                PendingIntent.FLAG_UPDATE_CURRENT  // actualiza el extra si llega otro push
+                        | PendingIntent.FLAG_ONE_SHOT      // solo una vez
+                        | PendingIntent.FLAG_IMMUTABLE
         );
     }
 
