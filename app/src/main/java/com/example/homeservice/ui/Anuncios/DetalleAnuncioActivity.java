@@ -1,14 +1,17 @@
 package com.example.homeservice.ui.Anuncios;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -30,13 +33,14 @@ import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class DetalleAnuncioActivity extends AppCompatActivity {
 
     private ViewPager2 viewPager;
-    private TextView tvTitulo, tvDescripcion, tvCiudad, tvCategoria, tvUserName;
-    private ImageView ivMapa, ivUserPhoto;
+    private TextView tvTitulo, tvDescripcion, tvCiudad, tvCategoria, tvUserName, tvDistanceDetail;
+    private ImageView ivMapa, ivUserPhoto, ivDistanceIcon;
     private Anuncio anuncio;
     private ActivityResultLauncher<Intent> editLauncher;
 
@@ -57,6 +61,9 @@ public class DetalleAnuncioActivity extends AppCompatActivity {
         ivMapa        = findViewById(R.id.ivMapa);
         MaterialButton btnCompartir = findViewById(R.id.btnAccionCompartir);
         Button btnChat             = findViewById(R.id.btnAccionChat);
+        ivDistanceIcon   = findViewById(R.id.ivDistanceIcon);
+        tvDistanceDetail = findViewById(R.id.tvDistanceDetail);
+
 
         // ——— 2) Toolbar como ActionBar ———
         Toolbar toolbar = findViewById(R.id.toolbar);
@@ -119,6 +126,8 @@ public class DetalleAnuncioActivity extends AppCompatActivity {
             );
         }
 
+        mostrarDistancia();
+
         // ——— 6) Botón CHAT ———
         btnChat.setText("CHAT");
         btnChat.setOnClickListener(v -> {
@@ -175,6 +184,41 @@ public class DetalleAnuncioActivity extends AppCompatActivity {
                     }
                 }
         );
+    }
+
+
+    /** Lee las coords del usuario desde SharedPrefs, calcula km y actualiza la UI */
+    private void mostrarDistancia() {
+        SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
+        float userLat = prefs.getFloat("userLat", Float.NaN);
+        float userLon = prefs.getFloat("userLon", Float.NaN);
+        if (!Float.isNaN(userLat) && !Float.isNaN(userLon)) {
+            double dKm = haversineKm(userLat, userLon,
+                    anuncio.getLatitud(), anuncio.getLongitud());
+            tvDistanceDetail .setText(
+                    String.format(Locale.getDefault(),
+                            "a %.0f km de ti", dKm)
+            );
+            ivDistanceIcon   .setVisibility(View.VISIBLE);
+            tvDistanceDetail .setVisibility(View.VISIBLE);
+        } else {
+            ivDistanceIcon   .setVisibility(View.GONE);
+            tvDistanceDetail .setVisibility(View.GONE);
+        }
+    }
+
+    /** Haversine: distancia en km entre dos coordenadas */
+    private double haversineKm(double lat1, double lon1,
+                               double lat2, double lon2) {
+        double R = 6371; // km
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat/2)*Math.sin(dLat/2)
+                + Math.cos(Math.toRadians(lat1))
+                * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLon/2)*Math.sin(dLon/2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
     }
 
     @Override
