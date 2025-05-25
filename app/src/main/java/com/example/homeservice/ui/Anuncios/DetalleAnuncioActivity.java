@@ -106,6 +106,15 @@ public class DetalleAnuncioActivity extends AppCompatActivity {
         ArrayList<String> urls = new ArrayList<>(anuncio.getListaImagenes());
         ImagenesAdapter adapter = new ImagenesAdapter(urls);
         viewPager.setAdapter(adapter);
+        // creamos todas las imagenes de golpe
+        viewPager.setOffscreenPageLimit(urls.size());
+
+        // 2) Pre-carga todas las imágenes en caché:
+        for (String url : urls) {
+            Glide.with(this)
+                    .load(url)
+                    .preload();
+        }
 
         // ——— 5) Cargar NOMBRE y FOTO del publicador ———
         String publisId = anuncio.getUserId();

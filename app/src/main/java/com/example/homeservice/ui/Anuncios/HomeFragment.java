@@ -28,18 +28,17 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.example.homeservice.MyApp;
 import com.example.homeservice.R;
 import com.example.homeservice.interfaz.OnAnuncioClickListener;
 import com.example.homeservice.database.FirestoreHelper;
 import com.example.homeservice.databinding.FragmentHomeBinding;
-import com.example.homeservice.interfaz.OnAnuncioLongClickListener;
 import com.example.homeservice.interfaz.OnFavoriteToggleListener;
 import com.example.homeservice.model.Anuncio;
 import com.example.homeservice.adapter.AnuncioAdapter;
 import com.example.homeservice.notificaciones.GestorNotificaciones;
 import com.example.homeservice.utils.LocationHelper;
-import com.example.homeservice.utils.LocationIQHelper;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.firebase.auth.FirebaseAuth;
@@ -68,6 +67,8 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
     private FirebaseAuth firebaseAuth;
     private LocationHelper locationHelper;
     private ActivityResultLauncher<String> locationPermissionLauncher;
+
+
 
     private final ActivityResultLauncher<String> notiPermLauncher =
             registerForActivityResult(
@@ -155,7 +156,16 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
 
         // Configuro el RecyclerView
         recyclerView = binding.recyclerViewAnuncios;
-        recyclerView.setLayoutManager(new GridLayoutManager(getContext(), 2));
+        // ① Creo y asigno el GridLayoutManager
+        GridLayoutManager glm = new GridLayoutManager(getContext(), 2);
+        glm.setInitialPrefetchItemCount(5);
+        recyclerView.setLayoutManager(glm);
+
+        // ② Cache interno de views para evitar inflados constantes
+        recyclerView.setItemViewCacheSize(20);
+// ② Cache interno de views para evitar inflados constantes
+        recyclerView.setItemViewCacheSize(20);
+
 
         // Inicializo la lista y el adapter con el listener de favoritos
         listaAnuncios = new ArrayList<>();
@@ -361,6 +371,14 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
                     /* 4) Actualizar RecyclerView */
                     listaAnuncios.clear();
                     listaAnuncios.addAll(lista);
+                    /* 4a) Pre‐carga con Glide de la primera imagen de cada anuncio */
+                    for (Anuncio a : listaAnuncios) {
+                        if (!a.getListaImagenes().isEmpty()) {
+                            Glide.with(this)
+                                    .load(a.getListaImagenes().get(0))
+                                    .preload();
+                        }
+                    }
                     sincronizarFavoritos();   // mantienes favoritos + notifyDataSetChanged()
                 },
                 e -> Toast.makeText(getContext(),

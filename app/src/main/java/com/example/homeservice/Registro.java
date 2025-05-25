@@ -93,7 +93,7 @@ public class Registro extends AppCompatActivity {
 
         // 2) Flags edge-to-edge (para que se pinte hasta arriba)
         Window window = getWindow();
-        WindowCompat.setDecorFitsSystemWindows(window, false);
+        WindowCompat.setDecorFitsSystemWindows(window, true);
 
         // 3) Quitamos translúcido, permitimos dibujar fondo de barra
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
