@@ -9,6 +9,10 @@ import com.example.homeservice.utils.ValidacionUtils;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthInvalidUserException;
 
+/**
+ * Actividad para recuperar contraseña de un usuario mediante e-mail.
+ * con metodos como sendPasswordResetEmail() y signInWithEmailAndPassword() de FirebaseAuth.
+ */
 public class ResetPasswordActivity extends AppCompatActivity {
 
     private EditText etCorreo;

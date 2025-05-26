@@ -342,6 +342,7 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
     private void cargarAnuncios() {
         new FirestoreHelper().leerAnunciosDescifrados(
                 lista -> {
+                    if (!isAdded()) return;
                     /* 1) Obtener ubicación guardada */
                     SharedPreferences prefs = requireContext()
                             .getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
@@ -372,7 +373,7 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
                     /* 4a) Pre‐carga con Glide de la primera imagen de cada anuncio */
                     for (Anuncio a : listaAnuncios) {
                         if (!a.getListaImagenes().isEmpty()) {
-                            Glide.with(this)
+                            Glide.with(requireContext())
                                     .load(a.getListaImagenes().get(0))
                                     .preload();
                         }
@@ -380,8 +381,14 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
                     sincronizarFavoritos();   // mantienes favoritos + notifyDataSetChanged()
                     adapter.notifyDataSetChanged();
                 },
-                e -> Toast.makeText(getContext(),
-                        "Error: "+e.getMessage(), Toast.LENGTH_SHORT).show());
+                e -> {
+                    /* ② ── También aquí ── */
+                    if (!isAdded()) return;
+                    Toast.makeText(requireContext(),
+                            "Error: " + e.getMessage(),
+                            Toast.LENGTH_SHORT).show();
+                }
+        );
     }
 
 

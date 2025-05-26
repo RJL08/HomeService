@@ -76,5 +76,9 @@ dependencies {
     implementation ("com.google.firebase:firebase-functions-ktx")
     implementation ("com.google.android.material:material:1.12.0")
     implementation ("androidx.preference:preference:1.2.0")
+
+
+
+
 }
 

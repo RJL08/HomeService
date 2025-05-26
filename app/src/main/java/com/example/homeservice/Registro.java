@@ -410,7 +410,8 @@ public class Registro extends AppCompatActivity {
 
 
     /**
-     * Actualiza la ciudad y lat/lon si el permiso YA estaba concedido
+     * Actualiza la ciudad y lat/lon si el permiso YA estaba concedido,
+     * por tanto realizamos la llamada a LocationIQ en onCreate para obtener ciudad y lat/lon
      */
     private void actualizarLocalizacionSiYaConcedido() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)

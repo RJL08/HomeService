@@ -46,7 +46,10 @@ import javax.crypto.SecretKey;
 @SuppressWarnings("deprecation")
 
 
-
+/**
+ * clase en la que se encuentra el login de usuario con correo y contraseña o con google.
+ * ademas
+ */
 public class Login extends AppCompatActivity {
 
     private EditText etCorreo, etContrasena;

@@ -9,9 +9,14 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.example.homeservice.seguridad.CommonCrypto;
 import com.example.homeservice.seguridad.CommonKeyProvider;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.appcheck.FirebaseAppCheck;
 
 import javax.crypto.SecretKey;
 
+/**
+ * clase encargada inicializar la clave común (CommonKey) usada para cifrar y descifrar datos.
+ */
 public class MyApp extends Application {
 
     private static final MutableLiveData<Boolean> KEY_READY = new MutableLiveData<>();
@@ -19,6 +24,8 @@ public class MyApp extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+
+
 
         CommonKeyProvider.get(new CommonKeyProvider.Callback() {
             @Override public void onReady(SecretKey k) {

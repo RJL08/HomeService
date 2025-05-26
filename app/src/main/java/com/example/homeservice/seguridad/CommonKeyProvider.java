@@ -1,8 +1,6 @@
 package com.example.homeservice.seguridad;
 
 import android.util.Base64;
-import android.util.Log;
-import androidx.annotation.Nullable;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.DocumentSnapshot;
 

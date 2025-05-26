@@ -14,8 +14,9 @@ import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 
-
-
+/**
+ * Gestor de notificaciones para Firebase Cloud Messaging.
+ */
 public class GestorNotificaciones {
 
 

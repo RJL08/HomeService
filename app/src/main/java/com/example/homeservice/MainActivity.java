@@ -57,11 +57,15 @@ import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.firestore.WriteBatch;
 import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageException;
 import com.google.firebase.storage.StorageReference;
 import com.squareup.picasso.Picasso;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * clase encargada de gestionar la vista principal de la app (home) y sus elementos.
+ */
 public class MainActivity extends AppCompatActivity {
 
     private AppBarConfiguration mAppBarConfiguration;
@@ -87,8 +91,6 @@ public class MainActivity extends AppCompatActivity {
 
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
-
-
 
         setSupportActionBar(binding.appBarMain.toolbar);
 
@@ -358,9 +360,9 @@ public class MainActivity extends AppCompatActivity {
 
 
 
-    // ───────────────────────────────────────────────
-//  3) Borra documentos, foto de Storage y cuenta
-// ───────────────────────────────────────────────
+
+//  3) Borra documentos, foto de Storage y cuenta usamos task chaining (Firebase) para evitar callbacks anidados
+
     private void borrarTodo(@NonNull FirebaseUser user) {
 
         AlertDialog progreso = crearDialogoProgreso();   // rueda indeterminada
@@ -389,7 +391,20 @@ public class MainActivity extends AppCompatActivity {
         // 3.5  Foto de perfil en Storage
         StorageReference foto = FirebaseStorage.getInstance()
                 .getReference("perfiles/" + uid + ".jpg");
-        tareas.add(foto.delete().addOnFailureListener(e -> {})); // ignora si no existe
+
+        Task<Void> fotoTask = foto.delete()                       // intenta borrar
+                .continueWith(task -> {                           // se ejecuta éxito-o-error
+                    if (task.isSuccessful()) return null;         // borrado OK
+                    Exception e = task.getException();
+                    if (e instanceof StorageException &&
+                            ((StorageException) e).getErrorCode()
+                                    == StorageException.ERROR_OBJECT_NOT_FOUND) {
+                        return null;                              // objeto no existe → la damos por buena
+                    }
+                    throw e;                                      // otro problema → propaga error
+                });
+
+        tareas.add(fotoTask);
 
         // ——— Espera a que todo termine ———
         Tasks.whenAll(tareas)
