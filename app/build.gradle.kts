@@ -1,9 +1,12 @@
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.google.gms.google.services)
 
+    
 
 }
+
 
 android {
     namespace = "com.example.homeservice"
@@ -35,6 +38,8 @@ android {
     buildFeatures {
         viewBinding = true
     }
+
+
 }
 
 dependencies {
@@ -80,5 +85,11 @@ dependencies {
 
 
 
+
+
 }
+
+
+
+
 

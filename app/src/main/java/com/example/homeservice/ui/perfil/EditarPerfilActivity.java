@@ -23,6 +23,7 @@ import com.bumptech.glide.Glide;
 import com.example.homeservice.R;
 import com.example.homeservice.database.FirestoreHelper;
 import com.example.homeservice.model.Usuario;
+import com.example.homeservice.utils.ValidacionUtils;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.firebase.auth.FirebaseAuth;
@@ -200,7 +201,15 @@ public class EditarPerfilActivity extends AppCompatActivity {
         String ciudad    = etCiudad.getText().toString().trim();
 
         if (nombre.isEmpty())          { etNombre.setError("Obligatorio");    return; }
+        if (!ValidacionUtils.validarNombre(nombre)) {
+            etNombre.setError("Máx. 20 caracteres");
+            return;
+        }
         if (apellidos.isEmpty())       { etApellidos.setError("Obligatorio"); return; }
+        if (!ValidacionUtils.validarApellidos(apellidos)) {
+            etApellidos.setError("Máx. 30 caracteres");
+            return;
+        }
 
         progress.setVisibility(View.VISIBLE);
 

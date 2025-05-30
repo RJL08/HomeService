@@ -489,6 +489,11 @@ public class PublicarAnuncio extends AppCompatActivity {
             etTitulo.requestFocus();
             return;
         }
+        if (titulo.length() > 50) {
+            etTitulo.setError("Título demasiado largo");
+            etTitulo.requestFocus();
+            return;
+        }
         if (oficio.isEmpty()) {
             dropdownCategoria.setError("Selecciona una categoría");
             dropdownCategoria.requestFocus();
@@ -500,6 +505,13 @@ public class PublicarAnuncio extends AppCompatActivity {
             etDescripcion.requestFocus();
             return;
         }
+
+        if (descripcion.length() > 600){
+            etDescripcion.setError("Descripción demasiado larga");
+            etDescripcion.requestFocus();
+            return;
+        }
+
         if (user == null) {
             Toast.makeText(this, "Usuario no autenticado", Toast.LENGTH_SHORT).show();
             return;
@@ -566,7 +578,7 @@ public class PublicarAnuncio extends AppCompatActivity {
         firestoreHelper.crearAnuncioCifrado(
                 anuncio,
                 id -> {
-                    Toast.makeText(this, "Anuncio publicado con ID: " + id, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Anuncio publicado corecctamente", Toast.LENGTH_SHORT).show();
                     startActivity(new Intent(PublicarAnuncio.this, MainActivity.class));
                     finish();
                 },

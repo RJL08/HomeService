@@ -273,6 +273,9 @@ public class Login extends AppCompatActivity {
                                 "fotoPerfilDefault");
                     }
 
+                    Toast.makeText(Login.this,
+                            "Inicio de sesión exitoso",  // ← mensaje
+                            Toast.LENGTH_LONG).show();
                     // Lanzar MainActivity
                     startActivity(new Intent(this, MainActivity.class));
                     finish();

@@ -48,6 +48,7 @@ public class DetalleAnuncioActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.detalle_anuncio);
 
+
         // ——— 1) Enlazar todas las vistas ———
         viewPager     = findViewById(R.id.viewPagerImagenes);
         ivUserPhoto   = findViewById(R.id.ivUserPhoto);
@@ -63,6 +64,7 @@ public class DetalleAnuncioActivity extends AppCompatActivity {
         tvDistanceDetail = findViewById(R.id.tvDistanceDetail);
 
 
+
         // ——— 2) Toolbar como ActionBar ———
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -74,6 +76,7 @@ public class DetalleAnuncioActivity extends AppCompatActivity {
         Drawable nav = toolbar.getNavigationIcon();
         if (nav != null) nav.setTint(Color.WHITE);
 
+
         // ——— 3) Recuperar el Anuncio del Intent ———
         anuncio = (Anuncio) getIntent().getSerializableExtra("anuncio");
         if (anuncio == null) {
@@ -81,6 +84,7 @@ public class DetalleAnuncioActivity extends AppCompatActivity {
             finish();
             return;
         }
+
 
         // ——— 4) Rellenar datos fijos del anuncio ———
         tvTitulo     .setText(anuncio.getTitulo());
@@ -258,6 +262,7 @@ public class DetalleAnuncioActivity extends AppCompatActivity {
         }
         return super.onOptionsItemSelected(item);
     }
+
 
 
 }

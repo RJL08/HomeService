@@ -244,7 +244,7 @@ public class Registro extends AppCompatActivity {
             etApellidos.requestFocus();
             return;
         }
-        if (!Patterns.EMAIL_ADDRESS.matcher(correo).matches()) {
+        if  (!ValidacionUtils.validarCorreo(correo)) {
             Log.d("RegistroDebug", "registrarUsuario: correo inválido");
             etCorreoRegistro.setError("Correo inválido");
             etCorreoRegistro.requestFocus();
