@@ -25,18 +25,22 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
+
 import com.bumptech.glide.Glide;
 import com.example.homeservice.MainActivity;
 import com.example.homeservice.R;
 import com.example.homeservice.database.FirestoreHelper;
 import com.example.homeservice.model.Anuncio;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class PublicarAnuncio extends AppCompatActivity {
 
@@ -67,6 +71,12 @@ public class PublicarAnuncio extends AppCompatActivity {
     private Double latUser = null;
     private Double lonUser = null;
 
+    // Para modo edición
+    private boolean esEdicion = false;
+    private Anuncio anuncioOriginal;
+    // Después de subir imágenes, guarda sus URLs aquí
+    private List<String> urlsSubidas = new ArrayList<>();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -75,9 +85,11 @@ public class PublicarAnuncio extends AppCompatActivity {
         contenedorImagenes = findViewById(R.id.contenedorImagenes);
         ImageView btnAgregarImagen = findViewById(R.id.btnAgregarImagen);
 
+
         etTitulo = findViewById(R.id.etTitulo);
         etDescripcion = findViewById(R.id.etDescripcion);
         tvUbicacion = findViewById(R.id.tvUbicacion);
+
 
 
         dropdownCategoria = findViewById(R.id.dropdownCategoria);
@@ -96,6 +108,59 @@ public class PublicarAnuncio extends AppCompatActivity {
         btnPublicar.setOnClickListener(v -> {
             publicarAnuncio();
         });
+
+        /**********/
+        boolean esEdicion = getIntent().getBooleanExtra("modo_editar", false);
+        anuncioOriginal   = (Anuncio) getIntent().getSerializableExtra("anuncio");
+
+        if (esEdicion && anuncioOriginal != null) {
+            // 1) Cambia el texto del botón
+            btnPublicar.setText("Guardar cambios");
+
+            // 2) Rellena campos con los datos del anuncio original
+            etTitulo.setText       (anuncioOriginal.getTitulo());
+            etDescripcion.setText  (anuncioOriginal.getDescripcion());
+            dropdownCategoria.setText(anuncioOriginal.getOficio(), false);
+            tvUbicacion.setText    (anuncioOriginal.getLocalizacion());
+
+            // 3) Pre-carga las URLs antiguas en el array de subida
+            urlsSubidas.clear();
+            urlsSubidas.addAll(anuncioOriginal.getListaImagenes());
+
+            // 4) Convierte cada URL en Uri y lo mete en el contenedor visual
+            imagenesSeleccionadas.clear();
+            for (String url : anuncioOriginal.getListaImagenes()) {
+                Uri uri = Uri.parse(url);
+                imagenesSeleccionadas.add(uri);
+                agregarImagenAlContenedor(uri);
+            }
+
+            // 5) Nuevo listener: crea un Anuncio con los campos actuales
+            btnPublicar.setOnClickListener(v -> {
+                // Construye el objeto con los campos modificados
+                Anuncio actualizado = new Anuncio(
+                        etTitulo.getText().toString().trim(),
+                        etDescripcion.getText().toString().trim(),
+                        dropdownCategoria.getText().toString().trim(),
+                        tvUbicacion.getText().toString().trim(),
+                        FirebaseAuth.getInstance().getCurrentUser().getUid(),
+                        anuncioOriginal.getFechaPublicacion()
+                );
+                actualizado.setId(anuncioOriginal.getId());
+                actualizado.setLatitud(latUser);
+                actualizado.setLongitud(lonUser);
+                // Nota: NO tocamos urlsSubidas aquí; el método de subida
+                // mezclará las nuevas y mantendrá estas viejas.
+                subirImagenesYActualizarAnuncio(actualizado);
+            });
+
+        } else {
+            // Modo “publicar nuevo”
+            btnPublicar.setText("Publicar");
+            btnPublicar.setOnClickListener(v -> publicarAnuncio());
+        }
+
+
 
         // ================
         // L A U N C H E R S
@@ -163,6 +228,69 @@ public class PublicarAnuncio extends AppCompatActivity {
         cargarDatosUsuarioYMostrarMapa();
     }
 
+    private void subirImagenesYActualizarAnuncio(Anuncio anuncio) {
+        List<String> todasUrls = new ArrayList<>();
+        int total = imagenesSeleccionadas.size();
+        AtomicInteger contador = new AtomicInteger(0);
+
+        for (Uri uri : imagenesSeleccionadas) {
+            String s = uri.toString();
+            // 1) Si ya es URL remota, la guardo directamente
+            if (s.startsWith("http")) {
+                todasUrls.add(s);
+                if (contador.incrementAndGet() == total) {
+                    lanzarActualizacion(anuncio, todasUrls);
+                }
+            } else {
+                // 2) Si es local, la subo a Firebase Storage
+                String path = "anuncios/" + UUID.randomUUID() + ".jpg";
+                StorageReference ref = FirebaseStorage.getInstance()
+                        .getReference(path);
+                ref.putFile(uri)
+                        .continueWithTask(task -> {
+                            if (!task.isSuccessful()) throw task.getException();
+                            return ref.getDownloadUrl();
+                        })
+                        .addOnSuccessListener(downloadUri -> {
+                            todasUrls.add(downloadUri.toString());
+                            if (contador.incrementAndGet() == total) {
+                                lanzarActualizacion(anuncio, todasUrls);
+                            }
+                        })
+                        .addOnFailureListener(e ->
+                                Toast.makeText(this,
+                                                "Error subiendo imagen: " + e.getMessage(),
+                                                Toast.LENGTH_SHORT)
+                                        .show()
+                        );
+            }
+        }
+    }
+
+    private void lanzarActualizacion(Anuncio anuncio, List<String> urlsFinales) {
+        anuncio.setListaImagenes(urlsFinales);
+        // asegúrate de conservar los demás campos: título, descripción, oficio, localización, lat/lng y fechaPublicación
+        new FirestoreHelper()
+                .actualizarAnuncioCifrado(
+                        anuncio.getId(),
+                        anuncio,
+                        v -> {
+                            Toast.makeText(this, "Anuncio actualizado", Toast.LENGTH_SHORT).show();
+                            Intent data = new Intent();
+                            data.putExtra("anuncio_actualizado", anuncio);
+                            setResult(RESULT_OK, data);
+                            finish();
+                        },
+                        e -> Toast.makeText(this, "Error: "+e.getMessage(), Toast.LENGTH_SHORT).show()
+                );
+    }
+
+
+
+
+    /**
+     * Lee la ciudad del usuario y carga el mapa con la ubicación del usuario
+     */
     private void cargarDatosUsuarioYMostrarMapa() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) {
@@ -290,12 +418,58 @@ public class PublicarAnuncio extends AppCompatActivity {
 
     private void agregarImagenAlContenedor(Uri uri) {
         ImageView nuevaImagen = new ImageView(this);
-        nuevaImagen.setLayoutParams(new LinearLayout.LayoutParams(200, 200));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(200, 200);
+        lp.setMargins(8, 8, 8, 8);
+        nuevaImagen.setLayoutParams(lp);
         nuevaImagen.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        nuevaImagen.setPadding(8, 8, 8, 8);
 
-        nuevaImagen.setImageURI(uri);
-        contenedorImagenes.addView(nuevaImagen, contenedorImagenes.getChildCount());
+        // ---- Cargar con Glide en lugar de setImageURI ----
+        Glide.with(this)
+                .load(uri.toString())       // acepta String, Uri u objeto DownloadUrl
+                .placeholder(R.drawable.ic_add) // opcional
+                .into(nuevaImagen);
+
+        // tag + long-click como tenías
+        nuevaImagen.setTag(uri);
+        nuevaImagen.setOnLongClickListener(v -> {
+            new MaterialAlertDialogBuilder(this)
+                    .setTitle("Eliminar imagen")
+                    .setMessage("¿Seguro que quieres quitar esta imagen?")
+                    .setPositiveButton("Eliminar", (d, w) -> {
+                        imagenesSeleccionadas.remove(uri);
+                        contenedorImagenes.removeView(v);
+                    })
+                    .setNegativeButton("Cancelar", null)
+                    .show();
+            return true;
+        });
+
+        contenedorImagenes.addView(nuevaImagen);
+    }
+
+
+    // metodos para guardar y recuperar imagenes en el onSaveInstanceState al girar el telefono
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        // Uri implementan Parcelable
+        outState.putParcelableArrayList(
+                "imgs", new ArrayList<>(imagenesSeleccionadas)
+        );
+    }
+
+    @Override
+    protected void onRestoreInstanceState(@NonNull Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        ArrayList<Uri> guardadas = savedInstanceState.getParcelableArrayList("imgs");
+        if (guardadas != null) {
+            imagenesSeleccionadas.clear();
+            contenedorImagenes.removeAllViews();
+            for (Uri uri : guardadas) {
+                imagenesSeleccionadas.add(uri);
+                agregarImagenAlContenedor(uri);
+            }
+        }
     }
 
     // =====================
@@ -315,6 +489,11 @@ public class PublicarAnuncio extends AppCompatActivity {
             etTitulo.requestFocus();
             return;
         }
+        if (titulo.length() > 50) {
+            etTitulo.setError("Título demasiado largo");
+            etTitulo.requestFocus();
+            return;
+        }
         if (oficio.isEmpty()) {
             dropdownCategoria.setError("Selecciona una categoría");
             dropdownCategoria.requestFocus();
@@ -326,6 +505,13 @@ public class PublicarAnuncio extends AppCompatActivity {
             etDescripcion.requestFocus();
             return;
         }
+
+        if (descripcion.length() > 600){
+            etDescripcion.setError("Descripción demasiado larga");
+            etDescripcion.requestFocus();
+            return;
+        }
+
         if (user == null) {
             Toast.makeText(this, "Usuario no autenticado", Toast.LENGTH_SHORT).show();
             return;
@@ -389,10 +575,10 @@ public class PublicarAnuncio extends AppCompatActivity {
 
     private void guardarAnuncioEnFirestore(Anuncio anuncio) {
         FirestoreHelper firestoreHelper = new FirestoreHelper();
-        firestoreHelper.crearAnuncio(
+        firestoreHelper.crearAnuncioCifrado(
                 anuncio,
                 id -> {
-                    Toast.makeText(this, "Anuncio publicado con ID: " + id, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Anuncio publicado corecctamente", Toast.LENGTH_SHORT).show();
                     startActivity(new Intent(PublicarAnuncio.this, MainActivity.class));
                     finish();
                 },

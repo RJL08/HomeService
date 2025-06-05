@@ -1,7 +1,12 @@
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.google.gms.google.services)
+
+    
+
 }
+
 
 android {
     namespace = "com.example.homeservice"
@@ -33,6 +38,8 @@ android {
     buildFeatures {
         viewBinding = true
     }
+
+
 }
 
 dependencies {
@@ -51,6 +58,8 @@ dependencies {
     implementation(libs.play.services.base)
     implementation(libs.firebase.firestore)
     implementation(libs.play.services.location)
+    implementation(libs.firebase.messaging)
+    implementation(libs.preference)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
@@ -64,6 +73,23 @@ dependencies {
     annotationProcessor ("com.github.bumptech.glide:compiler:4.16.0")
     implementation ("com.google.firebase:firebase-storage:20.3.0")
     implementation ("com.squareup.okhttp3:okhttp:4.10.0")
+    implementation ("androidx.activity:activity:1.8.2")
+    implementation (platform("com.google.firebase:firebase-bom:33.12.0"))
+    //implementation ("com.google.firebase:firebase-messaging:20.2.0")
+    // Opcional: Analytics (recomendado para informes de entrega)
+    implementation ("com.google.firebase:firebase-analytics")
+    implementation ("com.google.firebase:firebase-functions-ktx")
+    implementation ("com.google.android.material:material:1.12.0")
+    implementation ("androidx.preference:preference:1.2.0")
+
+
+
+
 
 
 }
+
+
+
+
+

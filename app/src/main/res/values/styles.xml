@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- 0 · Tu tema principal, sin ActionBar -->
+    <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Desactiva la ActionBar que viene por defecto -->
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+
+        <!-- Tus colores habituales -->
+        <item name="colorPrimary">@color/logo_background</item>
+        <item name="colorOnPrimary">@android:color/white</item>
+        <item name="colorSecondary">@color/teal_700</item>
+        <!-- … cualquier otra personalización que ya tuvieras … -->
+    </style>
+
+
+    <!-- Shape overlay con esquinas de 16 dp -->
+    <style name="ShapeAppearance.HomeService.Rounded16" parent="">
+        <item name="cornerSize">16dp</item>
+    </style>
+
+    <!-- 1· Forma redondeada de 24 dp -->
+    <style name="Shape.HomeService.Rounded24" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">24dp</item>
+    </style>
+
+    <!-- 2· Apariencia de texto para el título -->
+    <style name="TextAppearance.HomeService.DialogTitle"
+        parent="TextAppearance.MaterialComponents.Headline6">
+        <item name="android:textColor">@color/logo_background</item>
+    </style>
+
+    <!-- 3· Apariencia de texto para el cuerpo -->
+    <style name="TextAppearance.HomeService.DialogBody"
+        parent="TextAppearance.MaterialComponents.Body2">
+        <item name="android:textColor">@color/black</item>
+    </style>
+
+    <!-- 4· Estilo de los botones del diálogo -->
+    <style name="Widget.HomeService.Dialog.Button"
+        parent="Widget.MaterialComponents.Button.TextButton.Dialog">
+        <item name="android:textAllCaps">false</item>
+    </style>
+
+    <!-- 5· Overlay que aplicarás en MaterialAlertDialogBuilder -->
+    <style name="ThemeOverlay.HomeService.Dialog"
+        parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
+        <!-- Forma redondeada (en Material 2 se usa shapeAppearanceOverlay) -->
+        <item name="shapeAppearanceOverlay">@style/Shape.HomeService.Rounded24</item>
+        <!-- Fondo del diálogo -->
+        <item name="android:windowBackground">@color/white</item>
+        <!-- Texto -->
+        <item name="textAppearanceHeadline6">@style/TextAppearance.HomeService.DialogTitle</item>
+        <item name="textAppearanceBody2">@style/TextAppearance.HomeService.DialogBody</item>
+        <!-- Botones -->
+        <item name="buttonStyle">@style/Widget.HomeService.Dialog.Button</item>
+    </style>
+
+
+    <!-- 2· Estilo del botón “Categorías” -->
+    <style name="Widget.HomeService.Button.Categorias"
+        parent="Widget.MaterialComponents.Button">
+        <!-- Fondo amarillo mate -->
+        <item name="backgroundTint">@color/edit_profile_bg</item>
+        <!-- Texto en negrita y color de marca -->
+        <item name="android:textColor">@color/logo_background</item>
+        <item name="android:textStyle">bold</item>
+        <!-- Icono del mismo color que el texto -->
+        <item name="iconTint">@color/logo_background</item>
+        <!-- Borde de 2dp en color de marca -->
+        <item name="strokeColor">@color/logo_background</item>
+        <item name="strokeWidth">2dp</item>
+        <!-- Aplica la forma redondeada en todos los lados -->
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearance.HomeService.CatButtonRounded</item>
+    </style>
+
+    <!-- ShapeAppearance para esquinas laterales redondeadas -->
+    <!-- 1· Shape para botón “Categorías”: esquinas de 24dp por todos lados -->
+    <style name="ShapeAppearance.HomeService.CatButtonRounded" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">24dp</item>
+    </style>
+
+
+    <style name="ShapeAppearance.HomeService.Circle"
+        parent="ShapeAppearance.MaterialComponents.SmallComponent">
+        <!-- cornerFamily rounded para activar las esquinas redondeadas -->
+        <item name="cornerFamily">rounded</item>
+        <!-- 50% convierte un  width==height en un círculo -->
+        <item name="cornerSize">50%</item>
+    </style>
+
+
+
+
+    <!-- listas desplegables (categorías, AutoCompleteTextView...) -->
+    <style name="Widget.HomeService.ListPopupWindow" parent="Widget.AppCompat.ListView.DropDown">
+        <item name="android:popupBackground">?attr/colorSurface</item>
+        <item name="android:textColor">@android:color/white</item>
+    </style>
+
+    <style name="Shape.BubbleReceived" parent="ShapeAppearance.MaterialComponents.MediumComponent">
+        <item name="cornerSize">16dp</item>
+        <item name="cornerSizeBottomLeft">0dp</item>
+        <item name="cardBackgroundColor">?attr/colorSurfaceVariant</item>
+        <item name="cardElevation">2dp</item>
+    </style>
+
+    <style name="Shape.BubbleSent" parent="ShapeAppearance.MaterialComponents.MediumComponent">
+        <item name="cornerSize">16dp</item>
+        <item name="cornerSizeBottomRight">0dp</item>
+        <item name="cardBackgroundColor">@color/logo_background</item>
+        <item name="cardElevation">2dp</item>
+    </style>
+
+
+
+</resources>

@@ -10,12 +10,15 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.example.homeservice.R;
 import com.example.homeservice.interfaz.OnAnuncioClickListener;
+import com.example.homeservice.interfaz.OnAnuncioLongClickListener;
 import com.example.homeservice.interfaz.OnFavoriteToggleListener;
 import com.example.homeservice.model.Anuncio;
 
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Adaptador para mostrar la lista de anuncios en el RecyclerView del HomeFragment.
@@ -25,16 +28,26 @@ public class AnuncioAdapter extends RecyclerView.Adapter<AnuncioAdapter.AnuncioV
     private List<Anuncio> listaAnuncios;
     private OnAnuncioClickListener listener;
     private OnFavoriteToggleListener favoriteListener;
+    private static final int MAX_DESC_LENGTH = 20;
+    private final OnAnuncioLongClickListener longClickListener;
+
 
     /**
      * Constructor que recibe la lista de anuncios y los listeners.
      */
     public AnuncioAdapter(List<Anuncio> listaAnuncios,
                           OnAnuncioClickListener listener,
-                          OnFavoriteToggleListener favoriteListener) {
+                          OnFavoriteToggleListener favoriteListener, OnAnuncioLongClickListener longClickListener) {
         this.listaAnuncios = listaAnuncios;
         this.listener = listener;
         this.favoriteListener = favoriteListener;
+        this.longClickListener = longClickListener;
+    }
+
+    public AnuncioAdapter(List<Anuncio> lista,
+                          OnAnuncioClickListener click,
+                          OnFavoriteToggleListener fav) {
+        this(lista, click, fav, anuncio -> { /* no-op */ });
     }
 
     @NonNull
@@ -52,7 +65,18 @@ public class AnuncioAdapter extends RecyclerView.Adapter<AnuncioAdapter.AnuncioV
         holder.tvTitulo.setText(anuncio.getTitulo());
         holder.tvOficio.setText(anuncio.getOficio());
         holder.tvLocalizacion.setText(anuncio.getLocalizacion());
-        holder.tvDescripcion.setText(anuncio.getDescripcion());
+        //holder.tvDescripcion.setText(anuncio.getDescripcion());
+        // truncamos la descripción a MAX_DESC_LENGTH caracteres
+        String fullDesc = anuncio.getDescripcion() != null
+                ? anuncio.getDescripcion()
+                : "";
+        String shortDesc;
+        if (fullDesc.length() > MAX_DESC_LENGTH) {
+            shortDesc = fullDesc.substring(0, MAX_DESC_LENGTH) + "...";
+        } else {
+            shortDesc = fullDesc;
+        }
+        holder.tvDescripcion.setText(shortDesc);
 
         // Carga de imagen principal
         if (!anuncio.getListaImagenes().isEmpty()) {
@@ -60,6 +84,8 @@ public class AnuncioAdapter extends RecyclerView.Adapter<AnuncioAdapter.AnuncioV
             Glide.with(holder.itemView.getContext())
                     .load(urlPrimera)
                     .placeholder(R.drawable.nophoto)
+                    .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)  // cache optimizado
+                    .thumbnail(0.1f)                                 // mini-thumbnail mientras carga
                     .into(holder.ivAnuncio);
         } else {
             holder.ivAnuncio.setImageResource(R.drawable.nophoto);
@@ -85,10 +111,24 @@ public class AnuncioAdapter extends RecyclerView.Adapter<AnuncioAdapter.AnuncioV
             }
         });
 
+        // long-click:
+        holder.itemView.setOnLongClickListener(v -> {
+            longClickListener.onAnuncioLongClick(anuncio);
+            return true;
+        });
+
         // Clic en todo el item para abrir detalle
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) listener.onAnuncioClick(anuncio);
         });
+
+        if (anuncio.getDistanceKm() != Double.MAX_VALUE) {
+            holder.tvDist.setVisibility(View.VISIBLE);
+            holder.tvDist.setText(String.format(Locale.getDefault(),
+                    "%.1f km", anuncio.getDistanceKm()));
+        } else {
+            holder.tvDist.setVisibility(View.GONE);
+        }
     }
 
     @Override
@@ -97,8 +137,9 @@ public class AnuncioAdapter extends RecyclerView.Adapter<AnuncioAdapter.AnuncioV
     }
 
     static class AnuncioViewHolder extends RecyclerView.ViewHolder {
-        TextView tvTitulo, tvOficio, tvLocalizacion, tvDescripcion;
+        TextView tvTitulo, tvOficio, tvLocalizacion, tvDescripcion, tvDist;
         ImageView ivAnuncio, ivFavorite;
+
 
         public AnuncioViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -108,6 +149,7 @@ public class AnuncioAdapter extends RecyclerView.Adapter<AnuncioAdapter.AnuncioV
             tvOficio = itemView.findViewById(R.id.tvOficio);
             tvLocalizacion = itemView.findViewById(R.id.tvLocalizacion);
             tvDescripcion = itemView.findViewById(R.id.tvDescripcion);
+            tvDist          = itemView.findViewById(R.id.tvDist);
         }
     }
 }

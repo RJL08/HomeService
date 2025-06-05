@@ -8,6 +8,7 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED"/>
@@ -17,12 +18,13 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
+        android:name=".MyApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@mipmap/logo"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@mipmap/logo_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.HomeService"
         tools:targetApi="31">
@@ -41,7 +43,9 @@
 
         </activity>
 
-        <activity android:name=".ui.Anuncios.DetalleAnuncioActivity" />
+        <activity android:name=".ui.Anuncios.DetalleAnuncioActivity"
+            android:theme="@style/Theme.HomeService.NoActionBar"
+            />
 
         <activity android:name=".ui.Publicar.PublicarAnuncio" />
         <!-- MAIN ACTIVITY (no es launcher) -->
@@ -53,12 +57,16 @@
         <!-- REGISTRO ACTIVITY -->
         <activity
             android:name=".Registro"
-            android:exported="true" />
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize|stateHidden"/>
 
         <activity
             android:name=".ui.chat.ChatActivity"
             android:exported="true">
         </activity>
+        <activity
+            android:name=".ResetPasswordActivity"
+            android:exported="true" />
 
         <activity android:name=".ui.chat.NotificacionesActivity"
             android:exported="true" />
@@ -69,6 +77,16 @@
         <activity android:name=".utils.FilteredAnunciosActivity"
             android:exported="true" />
 
+        <activity
+            android:name=".ui.perfil.EditarPerfilActivity"
+            android:exported="true"
+            />
+
+        <activity
+            android:name=".ui.menu.AjustesActivity"
+            android:exported="true"
+            />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -78,6 +96,24 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <service
+            android:name=".notificaciones.ServicioFirebase"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/logo" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/colorAccent" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="@string/default_notification_channel_id"/>
 
 
     </application>

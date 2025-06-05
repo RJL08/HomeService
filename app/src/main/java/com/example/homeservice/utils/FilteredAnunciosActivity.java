@@ -15,8 +15,8 @@ import com.example.homeservice.interfaz.OnFavoriteToggleListener;
 import com.example.homeservice.model.Anuncio;
 import com.example.homeservice.ui.Anuncios.DetalleAnuncioActivity;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.firestore.Query;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class FilteredAnunciosActivity extends AppCompatActivity implements OnAnuncioClickListener, OnFavoriteToggleListener {
@@ -47,25 +47,28 @@ public class FilteredAnunciosActivity extends AppCompatActivity implements OnAnu
         }
 
         // Consulta a Firestore para obtener los anuncios de esta categoría
-        new FirestoreHelper().getDb().collection("anuncios")
-                .whereEqualTo("oficio", categoriaSeleccionada)
-                .orderBy("fechaPublicacion", Query.Direction.DESCENDING)
-                .addSnapshotListener((querySnapshot, error) -> {
-                    if (error != null) {
-                        Toast.makeText(FilteredAnunciosActivity.this, "Error al cargar anuncios", Toast.LENGTH_SHORT).show();
-                        return;
+        new FirestoreHelper().leerAnunciosDescifrados(
+                lista -> {
+                    // filtrado en memoria
+                    List<Anuncio> filtrados = new ArrayList<>();
+                    for (Anuncio a : lista) {
+                        if (categoriaSeleccionada.equals(a.getOficio())) {
+                            filtrados.add(a);
+                        }
                     }
+                    // orden por fecha desc
+                    Collections.sort(filtrados, (a1, a2) ->
+                            Long.compare(a2.getFechaPublicacion(), a1.getFechaPublicacion())
+                    );
+                    // actualizo la vista
                     listaAnuncios.clear();
-                    if (querySnapshot != null) {
-                        querySnapshot.getDocuments().forEach(doc -> {
-                            Anuncio anuncio = doc.toObject(Anuncio.class);
-                            if (anuncio != null) {
-                                listaAnuncios.add(anuncio);
-                            }
-                        });
-                        adapter.notifyDataSetChanged();
-                    }
-                });
+                    listaAnuncios.addAll(filtrados);
+                    adapter.notifyDataSetChanged();
+                },
+                error -> {
+                    Toast.makeText(this, "Error cargando anuncios", Toast.LENGTH_SHORT).show();
+                }
+        );
 
 
     }

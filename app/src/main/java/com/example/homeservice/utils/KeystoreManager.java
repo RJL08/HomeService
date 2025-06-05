@@ -1,101 +1,133 @@
 package com.example.homeservice.utils;
 
 
+import android.security.keystore.KeyGenParameterSpec;
+import android.security.keystore.KeyProperties;
 import android.util.Base64;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.KeyStore;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.util.Arrays;
+
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
-
-import android.security.keystore.KeyGenParameterSpec;
-import android.security.keystore.KeyProperties;
+import javax.crypto.spec.SecretKeySpec;
 
 public class KeystoreManager {
 
+    // ──────────── Constantes ────────────
     private static final String ANDROID_KEY_STORE = "AndroidKeyStore";
-    private static final String ALIAS = "MySecretKey";
-    private static final String TRANSFORMATION = "AES/GCM/NoPadding";
-    private static final int IV_SIZE = 12; // Tamaño IV recomendado para GCM (12 bytes)
-    private static final int TAG_LENGTH = 128; // Longitud de la etiqueta en bits
+    private static final String AES_ALIAS  = "AES_Master";
+    private static final String RSA_ALIAS  = "RSA_Wrap";
+    private static final String AES_TRANSFORMATION = "AES/GCM/NoPadding";
+    private static final String RSA_TRANSFORMATION = "RSA/ECB/PKCS1Padding";
 
-    private KeyStore keyStore;
+    private static final int IV_SIZE      = 12;   // bytes
+    private static final int TAG_LENGTH   = 128;  // bits
 
-    /**
-     * Constructor de la clase KeystoreManager.
-     * @throws Exception Si ocurre algún error al inicializar el KeyStore.
-     */
+    private final KeyStore keyStore;
+
+    // ──────────── INICIALIZACIÓN ────────────
     public KeystoreManager() throws Exception {
-        // Inicializa el KeyStore
         keyStore = KeyStore.getInstance(ANDROID_KEY_STORE);
         keyStore.load(null);
-        // Si no existe la clave con el alias, se genera
-        if (!keyStore.containsAlias(ALIAS)) {
-            generateSecretKey();
-        }
+
+        if (!keyStore.containsAlias(RSA_ALIAS)) generarParRSA();
+        if (!keyStore.containsAlias(AES_ALIAS)) generarAES();
     }
 
-    /**
-     * Genera una clave secreta utilizando KeyGenerator.
-     * @throws Exception Si ocurre algún error durante la generación de la clave.
-     */
-    private void generateSecretKey() throws Exception {
-        KeyGenerator keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEY_STORE);
-        KeyGenParameterSpec keyGenParameterSpec = new KeyGenParameterSpec.Builder(
-                ALIAS,
+    /* CREA un par RSA-2048 (pública/privada) para envolver la AES */
+    private void generarParRSA() throws Exception {
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance(
+                KeyProperties.KEY_ALGORITHM_RSA, ANDROID_KEY_STORE);
+
+        kpg.initialize(new KeyGenParameterSpec.Builder(
+                RSA_ALIAS,
+                KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
+                .setDigests(KeyProperties.DIGEST_SHA256)
+                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_PKCS1)
+                .build());
+        kpg.generateKeyPair();
+    }
+
+    /* CREA la clave AES-256 y la guarda sin envolver */
+    private void generarAES() throws Exception {
+        KeyGenerator kg = KeyGenerator.getInstance(
+                KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEY_STORE);
+        kg.init(new KeyGenParameterSpec.Builder(
+                AES_ALIAS,
                 KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
                 .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                .setKeySize(256)
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                .setRandomizedEncryptionRequired(true)
-                .build();
-        keyGenerator.init(keyGenParameterSpec);
-        keyGenerator.generateKey();
+                .build());
+        kg.generateKey();
     }
 
-    private SecretKey getSecretKey() throws Exception {
-        return (SecretKey) keyStore.getKey(ALIAS, null);
+    private SecretKey getAES() throws Exception {
+        return ((KeyStore.SecretKeyEntry) keyStore.getEntry(AES_ALIAS, null)).getSecretKey();
+    }
+    private KeyPair getRSA() throws Exception {
+        PrivateKey priv = (PrivateKey) keyStore.getKey(RSA_ALIAS, null);
+        PublicKey pub  = keyStore.getCertificate(RSA_ALIAS).getPublicKey();
+        return new KeyPair(pub, priv);
     }
 
-    /**
-     * Cifra el texto plano utilizando AES/GCM y lo devuelve codificado en Base64.
-     *
-     * @param plainText El texto a cifrar.
-     * @return El texto cifrado en Base64 (incluye el IV en los primeros 12 bytes).
-     * @throws Exception Si ocurre algún error durante el cifrado.
-     */
-    public String encryptData(String plainText) throws Exception {
-        Cipher cipher = Cipher.getInstance(TRANSFORMATION);
-        cipher.init(Cipher.ENCRYPT_MODE, getSecretKey());
-        // Obtén el IV generado automáticamente
-        byte[] iv = cipher.getIV();
-        byte[] encryptedBytes = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
-        // Combina el IV y los datos cifrados (IV || ciphertext)
-        byte[] combined = new byte[iv.length + encryptedBytes.length];
-        System.arraycopy(iv, 0, combined, 0, iv.length);
-        System.arraycopy(encryptedBytes, 0, combined, iv.length, encryptedBytes.length);
-        // Devuelve la cadena codificada en Base64
-        return Base64.encodeToString(combined, Base64.DEFAULT);
-    }
+    // ═══════════ CIFRAR / DESCIFRAR con AES (igual que antes) ═══════════
+    public String encryptData(String plain) throws Exception {
+        Cipher c = Cipher.getInstance(AES_TRANSFORMATION);
+        c.init(Cipher.ENCRYPT_MODE, getAES());
+        byte[] iv  = c.getIV();
+        byte[] enc = c.doFinal(plain.getBytes(StandardCharsets.UTF_8));
 
-    /**
-     * Descifra el texto cifrado (codificado en Base64) utilizando AES/GCM.
-     *
-     * @param cipherText El texto cifrado en Base64 (debe incluir el IV).
-     * @return El texto plano descifrado.
-     * @throws Exception Si ocurre algún error durante el descifrado.
-     */
-    public String decryptData(String cipherText) throws Exception {
-        byte[] combined = Base64.decode(cipherText, Base64.DEFAULT);
-        // Extrae el IV y el ciphertext
-        byte[] iv = Arrays.copyOfRange(combined, 0, IV_SIZE);
-        byte[] encryptedBytes = Arrays.copyOfRange(combined, IV_SIZE, combined.length);
-        Cipher cipher = Cipher.getInstance(TRANSFORMATION);
+        ByteBuffer bb = ByteBuffer.allocate(iv.length + enc.length);
+        bb.put(iv).put(enc);
+        return Base64.encodeToString(bb.array(), Base64.NO_WRAP);
+    }
+    public String decryptData(String base64) throws Exception {
+        byte[] all = Base64.decode(base64, Base64.NO_WRAP);
+        byte[] iv  = Arrays.copyOfRange(all, 0, IV_SIZE);
+        byte[] enc = Arrays.copyOfRange(all, IV_SIZE, all.length);
+
         GCMParameterSpec spec = new GCMParameterSpec(TAG_LENGTH, iv);
-        cipher.init(Cipher.DECRYPT_MODE, getSecretKey(), spec);
-        byte[] decryptedBytes = cipher.doFinal(encryptedBytes);
-        return new String(decryptedBytes, StandardCharsets.UTF_8);
+        Cipher c = Cipher.getInstance(AES_TRANSFORMATION);
+        c.init(Cipher.DECRYPT_MODE, getAES(), spec);
+        return new String(c.doFinal(enc), StandardCharsets.UTF_8);
+    }
+
+    // ═══════════ EXPORTAR / IMPORTAR CLAVE AES ═══════════
+
+    /** Devuelve la AES maestra **cifrada** con la clave RSA local (Base-64). */
+    public String exportarAES() throws Exception {
+        SecretKey aes = getAES();
+        Cipher rsa = Cipher.getInstance(RSA_TRANSFORMATION);
+        rsa.init(Cipher.ENCRYPT_MODE, getRSA().getPublic());
+        byte[] envuelta = rsa.doFinal(aes.getEncoded());
+        return Base64.encodeToString(envuelta, Base64.NO_WRAP);
+    }
+
+    /**
+     * Importa una AES previamente exportada en otro dispositivo.
+     * @param base64AESenv Encapsulado AES cifrado (Base-64) con la RSA del
+     *                     dispositivo origen.
+     */
+    public void importarAES(String base64AESenv) throws Exception {
+        byte[] env = Base64.decode(base64AESenv, Base64.NO_WRAP);
+
+        Cipher rsa = Cipher.getInstance(RSA_TRANSFORMATION);
+        rsa.init(Cipher.DECRYPT_MODE, getRSA().getPrivate());
+        byte[] raw = rsa.doFinal(env);                       // ← desenvueltas
+
+        // Guardamos la clave en el KeyStore reemplazando la antigua
+        SecretKey nueva = new SecretKeySpec(raw, "AES");
+        KeyStore.SecretKeyEntry entry = new KeyStore.SecretKeyEntry(nueva);
+        keyStore.setEntry(AES_ALIAS, entry, null);
     }
 }
