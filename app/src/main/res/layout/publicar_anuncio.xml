@@ -6,112 +6,173 @@
     android:layout_height="match_parent"
     android:padding="16dp">
 
-    <!-- Campo para el título del anuncio -->
-    <EditText
-        android:id="@+id/etTitulo"
+    <!-- ───────────── TÍTULO ───────────── -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilTitulo"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        app:boxBackgroundMode="outline"
+        app:boxCornerRadiusTopStart="24dp"
+        app:boxCornerRadiusTopEnd="24dp"
+        app:boxCornerRadiusBottomStart="24dp"
+        app:boxCornerRadiusBottomEnd="24dp"
+        app:boxStrokeColor="@color/logo_background"
         android:hint="Título del anuncio"
-        android:inputType="textCapWords"
-        android:maxLength="50"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintEnd_toEndOf="parent">
 
-    <!-- Dropdown de categorías -->
-    <AutoCompleteTextView
-        android:id="@+id/dropdownCategoria"
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etTitulo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:inputType="textCapWords"
+            android:maxLength="50"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- ───────────── CATEGORÍA ───────────── -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilCategoria"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        app:boxBackgroundMode="outline"
+        app:boxCornerRadiusTopStart="24dp"
+        app:boxCornerRadiusTopEnd="24dp"
+        app:boxCornerRadiusBottomStart="24dp"
+        app:boxCornerRadiusBottomEnd="24dp"
+        app:boxStrokeColor="@color/logo_background"
         android:hint="Categoría"
-        android:inputType="none"
-        android:drawableEnd="@drawable/ic_keyboard_arrow_down"
-        app:layout_constraintTop_toBottomOf="@id/etTitulo"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="16dp"
-        app:popupTheme="@style/Widget.HomeService.ListPopupWindow"
-        />
-
-    <!-- Campo para la ciudad/localización -->
-    <!-- Campo de solo lectura para mostrar la ubicación -->
-    <TextView
-        android:id="@+id/tvUbicacion"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text="Ubicación"
-        android:textAppearance="?android:attr/textAppearanceMedium"
-        app:layout_constraintTop_toBottomOf="@id/dropdownCategoria"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="16dp"
-        android:padding="8dp"
-        android:background="@drawable/border_background"/>
-
-
-    <!-- Contenedor de imágenes + botón agregar -->
-    <HorizontalScrollView
-        android:id="@+id/scrollImagenes"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:fillViewport="true"
-        android:scrollbars="none"
-        app:layout_constraintTop_toBottomOf="@id/tvUbicacion"
+        app:endIconMode="dropdown_menu"
+        app:endIconDrawable="@drawable/ic_keyboard_arrow_down"
+        app:layout_constraintTop_toBottomOf="@id/tilTitulo"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
+
+        <com.google.android.material.textfield.MaterialAutoCompleteTextView
+            android:id="@+id/dropdownCategoria"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="none"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- ───────────── UBICACIÓN (solo lectura) ───────────── -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilUbicacion"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        app:boxBackgroundMode="outline"
+        app:boxCornerRadiusTopStart="24dp"
+        app:boxCornerRadiusTopEnd="24dp"
+        app:boxCornerRadiusBottomStart="24dp"
+        app:boxCornerRadiusBottomEnd="24dp"
+        app:boxStrokeColor="@color/logo_background"
+        android:hint="Ubicación"
+        app:layout_constraintTop_toBottomOf="@id/tilCategoria"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/tvUbicacion"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:focusable="false"
+            android:clickable="false"
+            android:inputType="none"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- ───────────── GALERÍA DE IMÁGENES (outline) ───────────── -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardImagenes"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:padding="8dp"
+    app:cardCornerRadius="24dp"
+    app:strokeWidth="2dp"
+    app:strokeColor="@color/logo_background"
+    app:layout_constraintTop_toBottomOf="@id/tilUbicacion"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintEnd_toEndOf="parent">
+
+    <HorizontalScrollView
+        android:id="@+id/scrollImagenes"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fillViewport="true"
+        android:scrollbars="none">
 
         <LinearLayout
             android:id="@+id/contenedorImagenes"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp">
 
-            <!-- Aquí se agregarán dinámicamente hasta 5 imágenes -->
+        <!-- Botón "+" fijo al final -->
+        <ImageView
+            android:id="@+id/btnAgregarImagen"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:layout_margin="8dp"
+            android:background="@drawable/border_background"
+            android:src="@drawable/ic_add"
+            android:scaleType="center"
+            android:contentDescription="Agregar imagen"
+            app:tint="@color/teal_700"/>
+    </LinearLayout>
+</HorizontalScrollView>
+</com.google.android.material.card.MaterialCardView>
 
-            <!-- Botón "+" fijo al final -->
-            <ImageView
-                android:id="@+id/btnAgregarImagen"
-                android:layout_width="80dp"
-                android:layout_height="80dp"
-                android:layout_margin="8dp"
-                android:background="@drawable/border_background"
-                android:src="@drawable/ic_add"
-                android:scaleType="center"
-                android:contentDescription="Agregar imagen"
-                app:tint="@color/teal_700"
-                />
+    <!-- ───────────── DESCRIPCIÓN (outline) ───────────── -->
+<com.google.android.material.textfield.TextInputLayout
+android:id="@+id/tilDescripcion"
+android:layout_width="0dp"
+android:layout_height="0dp"
+android:layout_marginTop="24dp"
+app:boxBackgroundMode="outline"
+app:boxCornerRadiusTopStart="24dp"
+app:boxCornerRadiusTopEnd="24dp"
+app:boxCornerRadiusBottomStart="24dp"
+app:boxCornerRadiusBottomEnd="24dp"
+app:boxStrokeColor="@color/logo_background"
+android:hint="Escribe la descripción del anuncio..."
+app:layout_constraintTop_toBottomOf="@id/cardImagenes"
+app:layout_constraintBottom_toTopOf="@id/btnPublicar"
+app:layout_constraintStart_toStartOf="parent"
+app:layout_constraintEnd_toEndOf="parent">
 
-        </LinearLayout>
-    </HorizontalScrollView>
+<com.google.android.material.textfield.TextInputEditText
+    android:id="@+id/etDescripcion"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:gravity="top"
+    android:inputType="textMultiLine"
+    android:minLines="5"/>
+</com.google.android.material.textfield.TextInputLayout>
 
-    <!-- Campo grande para la descripción -->
-    <EditText
-        android:id="@+id/etDescripcion"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:hint="Escribe la descripción del anuncio..."
-        android:gravity="top"
-        android:inputType="textMultiLine"
-        android:minLines="5"
-        app:layout_constraintTop_toBottomOf="@id/scrollImagenes"
-        app:layout_constraintBottom_toTopOf="@id/btnPublicar"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="16dp"
-        android:layout_marginBottom="16dp"/>
+    <!-- ───────────── PUBLICAR ───────────── -->
+<Button
+android:id="@+id/btnPublicar"
+android:layout_width="0dp"
+android:layout_height="wrap_content"
+android:text="Publicar"
+android:textAllCaps="false"
+android:backgroundTint="@color/teal_700"
+android:textColor="@android:color/white"
+app:layout_constraintBottom_toBottomOf="parent"
+app:layout_constraintStart_toStartOf="parent"
+app:layout_constraintEnd_toEndOf="parent"/>
 
-    <!-- Botón para publicar -->
-    <Button
-        android:id="@+id/btnPublicar"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text="Publicar"
-        android:textAllCaps="false"
-        android:backgroundTint="@color/teal_700"
-        android:textColor="@android:color/white"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>

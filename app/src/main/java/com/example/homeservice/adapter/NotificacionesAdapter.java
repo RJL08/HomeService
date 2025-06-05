@@ -21,6 +21,7 @@ public class NotificacionesAdapter extends RecyclerView.Adapter<NotificacionesAd
     private final List<Conversation> conversations;
     private final Context context;
     private final OnConversacionClickLargo listenerLargo;
+    private static final int MAX_PREVIEW_CHARS = 30;
 
     public NotificacionesAdapter(List<Conversation> conversations, Context context, OnConversacionClickLargo listenerLargo) {
         this.conversations = conversations;
@@ -61,12 +62,17 @@ public class NotificacionesAdapter extends RecyclerView.Adapter<NotificacionesAd
                         : "Desconocido"
         );
 
-        // 2) Último mensaje (ya descifrado en la Activity)
+        /* 2) Último mensaje (ya descifrado en la Activity)
         holder.tvLastMessage.setText(
                 conv.getLastMessage() != null
                         ? conv.getLastMessage()
                         : "Sin mensajes"
-        );
+        );*/
+        String fullMsg = conv.getLastMessage() != null ? conv.getLastMessage() : "Sin mensajes";
+        String preview = fullMsg.length() > MAX_PREVIEW_CHARS
+                ? fullMsg.substring(0, MAX_PREVIEW_CHARS) + "…"
+                : fullMsg;
+        holder.tvLastMessage.setText(preview);
 
         // 3) Fecha formateada
         String dateText = "";

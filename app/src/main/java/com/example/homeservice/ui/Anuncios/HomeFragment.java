@@ -391,7 +391,14 @@ public class HomeFragment extends Fragment implements OnAnuncioClickListener {
         );
     }
 
-
+    /**
+     * Calcula la distancia entre dos puntos en km. Utiliza la fórmula del haversine.
+     * @param lat1
+     * @param lon1
+     * @param lat2
+     * @param lon2
+     * @return
+     */
     private static double haversineKm(double lat1, double lon1,
                                       double lat2, double lon2) {
         double R = 6371;                       // Radio Tierra km

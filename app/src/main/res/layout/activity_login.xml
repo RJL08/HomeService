@@ -70,7 +70,8 @@
                 app:boxCornerRadiusBottomStart="24dp"
                 app:boxCornerRadiusBottomEnd="24dp"
                 android:hint="Contraseña"
-                app:startIconDrawable="@drawable/ic_lock">
+                app:startIconDrawable="@drawable/ic_lock"
+                app:endIconMode="password_toggle">
 
                 <TextView
                     android:id="@+id/tvOlvidePassword"
