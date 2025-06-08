@@ -11,7 +11,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.homeservice.R;
 import com.example.homeservice.model.Conversation;
 import com.example.homeservice.ui.chat.ChatActivity;
-import com.google.firebase.auth.FirebaseAuth;
 import java.text.DateFormat;
 import java.util.Date;
 import java.util.List;
